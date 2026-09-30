@@ -1,0 +1,24 @@
+{
+  "name": "CardBack — Action Figure Archive",
+  "short_name": "CardBack",
+  "description": "The definitive platform and authoritative catalogue archive for action figure collectors.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#040812",
+  "theme_color": "#000B76",
+  "icons": [
+    {
+      "src": "/Logo_v1_var6_POS_color.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/Logo_v1_var6_POS_blue.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
