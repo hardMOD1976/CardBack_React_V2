@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CollectionService } from '../../services/collectionService';
 import { ApiService } from '../../services/apiService';
 import { CbCard } from '../shared/CbCard';
@@ -18,10 +18,22 @@ import {
   Bookmark,
   Sparkles,
   Database,
-  Wifi
+  Wifi,
+  Sun,
+  Moon,
+  Palette,
+  GitBranch,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  RefreshCw,
+  HardDrive
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { LanguageSelector } from '../shell/LanguageSelector';
+import { useTheme, SkinType } from '../../contexts/ThemeContext';
+import { APP_VERSION } from '../../config/version';
+import { VersionModal } from '../shared/VersionModal';
 
 interface ProfileViewProps {
   currentUser: { name: string; email: string; id?: string; displayName?: string; role?: string } | null;
@@ -43,15 +55,61 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   isConsentAgreed = true
 }) => {
   const { t } = useLanguage();
+  const { skin, setSkin, mode, setMode } = useTheme();
+  const [isVersionModalOpen, setIsVersionModalOpen] = useState(false);
   const stats = CollectionService.getCollectionStats();
   const ownedFigures = CollectionService.getOwnedFigures();
   const [downloadSuccess, setDownloadSuccess] = useState(false);
   const [isSeeding, setIsSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<{ message: string; figuresCount?: number; linesCount?: number } | null>(null);
   const [seedError, setSeedError] = useState<string | null>(null);
+  const [dbStorageInfo, setDbStorageInfo] = useState<{ size: string; raw: number; counts?: Record<string, number> } | null>(null);
+  const [isOptimizingDb, setIsOptimizingDb] = useState(false);
+  const [optimizeSuccess, setOptimizeSuccess] = useState<string | null>(null);
+
+  const loadDbStats = async () => {
+    try {
+      const res = await fetch('/api/db/stats');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.databaseSize) {
+          setDbStorageInfo({ size: data.databaseSize, raw: data.rawDatabaseSize, counts: data.counts });
+        }
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    loadDbStats();
+  }, []);
+
+  const handleOptimizeDatabase = async () => {
+    setIsOptimizingDb(true);
+    setOptimizeSuccess(null);
+    setSeedError(null);
+    try {
+      const res = await fetch('/api/db/optimize', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${localStorage.getItem('cb_token') || ''}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Optimization failed');
+      setOptimizeSuccess(t('seed.optimize_success', 'Base de dades Neon optimitzada i compactada correctament!'));
+      await loadDbStats();
+    } catch (err: any) {
+      setSeedError(err.message || 'Error optimitzant Neon');
+    } finally {
+      setIsOptimizingDb(false);
+    }
+  };
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmNewPassword, setShowConfirmNewPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -210,14 +268,165 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
       </CbCard>
 
+      {/* Control de Versions & Guia de Testeig */}
+      <CbCard id="profile-version-card" className="p-6 border-slate-200 dark:border-slate-800 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-500/30 shrink-0">
+              <GitBranch className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                  Control de Versions & Estat de Desplegament
+                </h2>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 font-mono font-bold text-xs flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  {APP_VERSION.version}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Compilació: <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">{APP_VERSION.buildDate}</span> • {APP_VERSION.environment}
+              </p>
+            </div>
+          </div>
+
+          <CbButton
+            variant="outline"
+            size="sm"
+            onClick={() => setIsVersionModalOpen(true)}
+            icon={<Sparkles className="w-4 h-4 text-amber-500" />}
+          >
+            Veure Changelog Complet
+          </CbButton>
+        </div>
+
+        {/* Release Headline */}
+        <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 flex items-start gap-2.5">
+          <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+            {APP_VERSION.releaseTitle}
+          </p>
+        </div>
+
+        {/* Testable features list */}
+        <div className="space-y-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+              Què pots testejar en aquesta versió ({APP_VERSION.version}):
+            </span>
+            <span className="text-[11px] text-slate-400 font-mono">{APP_VERSION.testableFeatures.length} funcionalitats</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {APP_VERSION.testableFeatures.map((feat, idx) => (
+              <div
+                key={idx}
+                className="p-3.5 rounded-xl border border-slate-300 dark:border-slate-700/80 bg-white dark:bg-slate-950 shadow-xs space-y-2 overflow-hidden"
+              >
+                <div className="space-y-1.5 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {feat.status === 'updated' ? (
+                      <span className="px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-800 dark:text-amber-300 text-[10px] font-bold font-mono border border-amber-500/40 shrink-0">
+                        ACTUALITZAT
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold font-mono border border-emerald-500/40 shrink-0">
+                        DISPONIBLE
+                      </span>
+                    )}
+                    <h3 className="text-xs sm:text-sm font-bold text-slate-950 dark:text-white leading-snug break-words">
+                      {feat.title}
+                    </h3>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed font-normal">
+                  {feat.description}
+                </p>
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {feat.tags.map((tg, tIdx) => (
+                    <span
+                      key={tIdx}
+                      className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 font-mono font-medium"
+                    >
+                      #{tg}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </CbCard>
+
       {currentUser && <CbCard className="p-6 border-slate-200 dark:border-slate-800 space-y-4">
         <div><h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{t('auth.change_password', 'Change password')}</h2><p className="mt-1 text-xs text-slate-500">{t('auth.password_min', 'Use at least 12 characters for your password.')}</p></div>
         {passwordMessage && <p role="status" className="rounded-lg bg-emerald-50 p-3 text-sm text-emerald-800">{passwordMessage}</p>}
         {passwordError && <p role="alert" className="rounded-lg bg-rose-50 p-3 text-sm text-rose-800">{passwordError}</p>}
         <form onSubmit={handlePasswordChange} className="grid gap-3 sm:grid-cols-2">
-          <input required type="password" autoComplete="current-password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} placeholder={t('auth.current_password', 'Current password')} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:bg-slate-950" />
-          <input required type="password" minLength={12} autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder={t('auth.new_password', 'New password')} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:bg-slate-950" />
-          <input required type="password" minLength={12} autoComplete="new-password" value={confirmNewPassword} onChange={e => setConfirmNewPassword(e.target.value)} placeholder={t('auth.confirm_password', 'Confirm password')} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm dark:bg-slate-950" />
+          <div className="relative flex items-center">
+            <input
+              required
+              type={showCurrentPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              value={currentPassword}
+              onChange={e => setCurrentPassword(e.target.value)}
+              placeholder={t('auth.current_password', 'Current password')}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 pr-11 text-sm dark:bg-slate-950 dark:border-slate-700"
+            />
+            <button
+              type="button"
+              onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+              aria-label={showCurrentPassword ? t('auth.hide_password', 'Amagar contrasenya') : t('auth.show_password', 'Mostrar contrasenya')}
+              title={showCurrentPassword ? t('auth.hide_password', 'Amagar contrasenya') : t('auth.show_password', 'Mostrar contrasenya')}
+              className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors cursor-pointer rounded-lg"
+            >
+              {showCurrentPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          <div className="relative flex items-center">
+            <input
+              required
+              type={showNewPassword ? 'text' : 'password'}
+              minLength={12}
+              autoComplete="new-password"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+              placeholder={t('auth.new_password', 'New password')}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 pr-11 text-sm dark:bg-slate-950 dark:border-slate-700"
+            />
+            <button
+              type="button"
+              onClick={() => setShowNewPassword(!showNewPassword)}
+              aria-label={showNewPassword ? t('auth.hide_password', 'Amagar contrasenya') : t('auth.show_password', 'Mostrar contrasenya')}
+              title={showNewPassword ? t('auth.hide_password', 'Amagar contrasenya') : t('auth.show_password', 'Mostrar contrasenya')}
+              className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors cursor-pointer rounded-lg"
+            >
+              {showNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          <div className="relative flex items-center sm:col-span-2">
+            <input
+              required
+              type={showConfirmNewPassword ? 'text' : 'password'}
+              minLength={12}
+              autoComplete="new-password"
+              value={confirmNewPassword}
+              onChange={e => setConfirmNewPassword(e.target.value)}
+              placeholder={t('auth.confirm_password', 'Confirm password')}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 pr-11 text-sm dark:bg-slate-950 dark:border-slate-700"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirmNewPassword(!showConfirmNewPassword)}
+              aria-label={showConfirmNewPassword ? t('auth.hide_password', 'Amagar contrasenya') : t('auth.show_password', 'Mostrar contrasenya')}
+              title={showConfirmNewPassword ? t('auth.hide_password', 'Amagar contrasenya') : t('auth.show_password', 'Mostrar contrasenya')}
+              className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors cursor-pointer rounded-lg"
+            >
+              {showConfirmNewPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
           <div><CbButton variant="outline" size="sm" type="submit" disabled={isChangingPassword}>{isChangingPassword ? t('common.loading', 'Saving...') : t('auth.change_password', 'Change password')}</CbButton></div>
         </form>
       </CbCard>}
@@ -241,7 +450,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {t('profile.database_description', 'The app is connected to your Neon PostgreSQL database with persistent storage.')}
         </p>
 
-        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 font-mono text-xs space-y-1.5">
+        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 font-mono text-xs space-y-1.5">
           <div className="flex justify-between">
             <span className="text-slate-500">{t('profile.provider', 'Provider')}:</span>
             <span className="text-slate-800 dark:text-slate-200 font-semibold">Neon Serverless PostgreSQL</span>
@@ -319,6 +528,176 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </p>
       </CbCard>
 
+      {/* Appearance, Theme & Skin Customization Card */}
+      <CbCard id="profile-theme-card" className="p-6 border-slate-200 dark:border-slate-800 space-y-5">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <Palette className="w-5 h-5 text-amber-500" />
+            <div>
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+                {t('profile.appearance_theme', 'Aparença i Tema')}
+              </h2>
+              <p className="text-xs text-slate-500">
+                {t('profile.appearance_subtitle', 'Configura el mode clar/fosc i l’estil vintage de Cardback')}
+              </p>
+            </div>
+          </div>
+          <Badge variant={mode === 'dark' ? 'amber' : 'gray'} className="text-xs font-mono">
+            {mode === 'dark' ? t('common.theme_dark', 'Mode Fosc') : t('common.theme_light', 'Mode Clar')}
+          </Badge>
+        </div>
+
+        {/* 1. Light / Dark Theme Mode Selector Buttons */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono block">
+            {t('profile.theme_mode_label', 'Tema de color (Mode Clar / Fosc)')}
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              id="theme-light-btn"
+              onClick={() => setMode('light')}
+              aria-pressed={mode === 'light'}
+              className={`p-3.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
+                mode === 'light'
+                  ? 'border-amber-500 bg-amber-500/10 text-slate-900 dark:text-slate-100 ring-2 ring-amber-500/40 shadow-xs'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-lg ${mode === 'light' ? 'bg-amber-500 text-white shadow-xs' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
+                  <Sun className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <span className="text-xs font-bold block text-slate-900 dark:text-slate-100">
+                    {t('common.theme_light', 'Mode Clar')}
+                  </span>
+                  <span className="text-[11px] text-slate-500 block">
+                    Fons lluminós i alt contrast de lectura
+                  </span>
+                </div>
+              </div>
+              {mode === 'light' && (
+                <div className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0">
+                  <Check className="w-3.5 h-3.5" />
+                </div>
+              )}
+            </button>
+
+            <button
+              type="button"
+              id="theme-dark-btn"
+              onClick={() => setMode('dark')}
+              aria-pressed={mode === 'dark'}
+              className={`p-3.5 rounded-xl border flex items-center justify-between transition-all cursor-pointer ${
+                mode === 'dark'
+                  ? 'border-amber-500 bg-amber-500/10 text-slate-900 dark:text-slate-100 ring-2 ring-amber-500/40 shadow-xs'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-lg ${mode === 'dark' ? 'bg-amber-500 text-slate-950 shadow-xs font-bold' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'}`}>
+                  <Moon className="w-5 h-5" />
+                </div>
+                <div className="text-left">
+                  <span className="text-xs font-bold block text-slate-900 dark:text-slate-100">
+                    {t('common.theme_dark', 'Mode Fosc')}
+                  </span>
+                  <span className="text-[11px] text-slate-500 block">
+                    Fons profund de col·leccionista
+                  </span>
+                </div>
+              </div>
+              {mode === 'dark' && (
+                <div className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0">
+                  <Check className="w-3.5 h-3.5" />
+                </div>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Visual Skin Selector (Vintage Kenner 78 / Modern / Neon 84) */}
+        <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-800">
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 font-mono block">
+              {t('profile.skin_style_label', 'Estil i Skin d’Arxiu')}
+            </label>
+            <span className="text-[11px] font-mono font-bold text-amber-600 dark:text-amber-400">
+              {skin === 'vintage-kenner' ? "★ Kenner '78" : skin === 'retro-neon' ? "◆ Neon '84" : "● Modern"}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            {/* Vintage Kenner Cardback */}
+            <button
+              type="button"
+              onClick={() => setSkin('vintage-kenner')}
+              aria-pressed={skin === 'vintage-kenner'}
+              className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                skin === 'vintage-kenner'
+                  ? 'border-sky-500 bg-sky-500/10 ring-2 ring-sky-500/30'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <span className="text-amber-400">★</span> Kenner ’78
+                </span>
+                {skin === 'vintage-kenner' && <Check className="w-3.5 h-3.5 text-sky-400" />}
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                Doble línia racetrack platejada clàssica i blau profund 1978.
+              </p>
+            </button>
+
+            {/* Modern Archive */}
+            <button
+              type="button"
+              onClick={() => setSkin('modern')}
+              aria-pressed={skin === 'modern'}
+              className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                skin === 'modern'
+                  ? 'border-amber-500 bg-amber-500/10 ring-2 ring-amber-500/30'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <span className="text-amber-500">●</span> Modern Archive
+                </span>
+                {skin === 'modern' && <Check className="w-3.5 h-3.5 text-amber-500" />}
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                Disseny minimalista hipernet i de màxima precisió d'arxiu.
+              </p>
+            </button>
+
+            {/* Neon 84 Synthwave */}
+            <button
+              type="button"
+              onClick={() => setSkin('retro-neon')}
+              aria-pressed={skin === 'retro-neon'}
+              className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                skin === 'retro-neon'
+                  ? 'border-cyan-500 bg-cyan-500/10 ring-2 ring-cyan-500/30'
+                  : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5">
+                  <span className="text-cyan-400">◆</span> Neon ’84
+                </span>
+                {skin === 'retro-neon' && <Check className="w-3.5 h-3.5 text-cyan-400" />}
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2">
+                Cian elèctric i quadrícula synthwave dels anys 80.
+              </p>
+            </button>
+          </div>
+        </div>
+      </CbCard>
+
       {/* Star Wars Historical Catalogue Neon Seed Card */}
       <CbCard className="p-6 border-slate-200 dark:border-slate-800 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -341,6 +720,44 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
           {t('seed.description', 'Load the historical Star Wars figure catalogue into your Neon PostgreSQL database: 96 classic Kenner figures (1977–1985), later vintage and modern product lines.')}
         </p>
+
+        {/* Live Storage Meter & Neon Explanation */}
+        <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/60 space-y-2">
+          <div className="flex items-center justify-between text-xs">
+            <span className="font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <HardDrive className="w-4 h-4 text-amber-500" />
+              {t('seed.storage_meter', 'Estat d\'Emmagatzematge a Neon DB:')}
+            </span>
+            <span className="font-mono font-bold text-slate-900 dark:text-slate-100">
+              {dbStorageInfo ? `${dbStorageInfo.size} / 500 MB (~${Math.max(1, Math.round((dbStorageInfo.raw / (500 * 1024 * 1024)) * 100))}%)` : '~14 MB / 500 MB (~3%)'}
+            </span>
+          </div>
+
+          <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+            <div 
+              className="bg-amber-500 h-full rounded-full transition-all duration-500"
+              style={{ width: `${Math.min(100, Math.max(3, Math.round(((dbStorageInfo?.raw || 14 * 1024 * 1024) / (500 * 1024 * 1024)) * 100)))}%` }}
+            />
+          </div>
+
+          <div className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed pt-0.5 space-y-1">
+            <div>
+              <span className="font-semibold text-slate-600 dark:text-slate-300">💡 {t('seed.info_title', 'Arquitectura estil Discogs activada:')}</span>{' '}
+              {t('seed.info_detail', 'Totes les fotos es guarden com a fitxers independents (/uploads/) o enllaços d\'imatge externa. PostgreSQL només emmagatzema la URL de text (~40 bytes), mantenint el trànsit de la base de dades sota mínims.')}
+            </div>
+            <div className="flex items-center gap-1.5 pt-0.5 text-emerald-600 dark:text-emerald-400 font-mono text-[10px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+              <span>Magatzem actiu: Fitxers Estàtics (/uploads/) — Zero imatges Base64 a Neon</span>
+            </div>
+          </div>
+        </div>
+
+        {optimizeSuccess && (
+          <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-2 text-emerald-700 dark:text-emerald-300 text-xs">
+            <Check className="w-4 h-4 shrink-0" />
+            <span>{optimizeSuccess}</span>
+          </div>
+        )}
 
         {seedResult && (
           <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-900/50 flex items-center gap-2 text-emerald-700 dark:text-emerald-300 text-xs">
@@ -368,6 +785,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {isSeeding ? t('seed.loading', 'Injectant a Neon DB...') : t('seed.btn', 'Carregar Catàleg Històric a Neon DB')}
           </CbButton>
 
+          <CbButton
+            variant="outline"
+            size="sm"
+            disabled={isOptimizingDb}
+            onClick={handleOptimizeDatabase}
+            icon={<RefreshCw className={`w-3.5 h-3.5 ${isOptimizingDb ? 'animate-spin' : ''}`} />}
+          >
+            {isOptimizingDb ? t('seed.optimizing', 'Optimitzant...') : t('seed.optimize_btn', 'Optimitzar i compactar imatges a Neon')}
+          </CbButton>
+
           <span className="text-[11px] text-slate-400">
             {t('seed.quota_note', '* Només ocupa ~4 MB (~1% del teu límit gratuït de 500 MB a Neon).')}
           </span>
@@ -392,7 +819,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {storageLocations.map((loc, idx) => (
             <div
               key={idx}
-              className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex items-center justify-between"
+              className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 flex items-center justify-between"
             >
               <div className="space-y-0.5">
                 <span className="text-xs font-bold text-slate-900 dark:text-slate-100">
@@ -491,6 +918,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </button>
         </div>
       </CbCard>
+
+      {/* Full Version & Changelog Modal */}
+      <VersionModal 
+        isOpen={isVersionModalOpen} 
+        onClose={() => setIsVersionModalOpen(false)} 
+      />
     </div>
   );
 };

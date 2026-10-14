@@ -145,6 +145,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'seed.btn': 'Carregar Catàleg Històric a Neon DB',
     'seed.loading': 'Injectant a Neon DB...',
     'seed.quota_note': '* Només ocupa ~4 MB (~1% del límit de 500 MB gratuït a Neon).',
+    'seed.storage_meter': 'Estat d\'Emmagatzematge a Neon DB:',
+    'seed.info_title': 'Per què varia l\'espai?',
+    'seed.info_detail': 'El catàleg històric només ocupa ~4 MB de text. Quan s\'adjunten fotografies d\'alta resolució des del mòbil, el sistema ara les comprimeix automàticament (<90 KB) per no exhaurir la quota gratuïta de Neon.',
+    'seed.optimize_success': 'Base de dades Neon optimitzada i compactada correctament!',
+    'seed.optimizing': 'Optimitzant...',
+    'seed.optimize_btn': 'Optimitzar i compactar imatges a Neon',
     'seed.success': 'Catàleg històric carregat correctament a Neon PostgreSQL!',
 
     // Theme & Generic
@@ -300,6 +306,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'seed.btn': 'Cargar Catálogo Histórico en Neon DB',
     'seed.loading': 'Inyectando en Neon DB...',
     'seed.quota_note': '* Solo ocupa ~4 MB (~1% del límite gratuito de 500 MB en Neon).',
+    'seed.storage_meter': 'Estado de Almacenamiento en Neon DB:',
+    'seed.info_title': '¿Por qué varía el espacio?',
+    'seed.info_detail': 'El catálogo histórico solo ocupa ~4 MB de texto. Al adjuntar fotografías de alta resolución desde el móvil, el sistema ahora las comprime automáticamente (<90 KB) para no agotar la cuota gratuita de Neon.',
+    'seed.optimize_success': '¡Base de datos Neon optimizada y compactada correctamente!',
+    'seed.optimizing': 'Optimizando...',
+    'seed.optimize_btn': 'Optimizar y compactar imágenes en Neon',
     'seed.success': '¡Catálogo histórico cargado correctamente en Neon PostgreSQL!',
 
     // Theme & Generic
@@ -455,6 +467,12 @@ export const TRANSLATIONS: Record<SupportedLanguage, Record<string, string>> = {
     'seed.btn': 'Load Historical Catalogue into Neon DB',
     'seed.loading': 'Seeding Neon DB...',
     'seed.quota_note': '* Only consumes ~4 MB (~1% of your 500 MB free quota on Neon).',
+    'seed.storage_meter': 'Storage Status in Neon DB:',
+    'seed.info_title': 'Why does storage vary?',
+    'seed.info_detail': 'The historical catalog only takes ~4 MB of text. When attaching high-resolution mobile photos, the system now automatically compresses them (<90 KB) to prevent exceeding Neon\'s free quota.',
+    'seed.optimize_success': 'Neon database successfully optimized and compacted!',
+    'seed.optimizing': 'Optimizing...',
+    'seed.optimize_btn': 'Optimize & Compact Images in Neon',
     'seed.success': 'Historical catalogue successfully seeded into Neon PostgreSQL!',
 
     // Theme & Generic

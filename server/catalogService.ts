@@ -453,6 +453,26 @@ export async function getManufacturerDetailFromDb(
   };
 }
 
+// In-memory caching to eliminate repetitive Neon PostgreSQL network transfer
+let catalogCache: {
+  figures: FigureDetailResponseDto[];
+  lines: LineDetailResponseDto[];
+  characters: CharacterDetailResponseDto[];
+  franchises: FranchiseDetailResponseDto[];
+  manufacturers: ManufacturerDetailResponseDto[];
+} | null = null;
+let catalogCacheTimestamp = 0;
+const CATALOG_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
+const entityDetailCache = new Map<string, { data: any; timestamp: number }>();
+const ENTITY_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
+export function invalidateCatalogCache(): void {
+  catalogCache = null;
+  catalogCacheTimestamp = 0;
+  entityDetailCache.clear();
+}
+
 /**
  * Universal entity lookup: tries PostgreSQL DB first, then falls back to in-memory catalogueSeed.
  */
@@ -461,71 +481,86 @@ export async function getCatalogEntity(
   id: string,
   pool: pg.Pool | null
 ): Promise<any | null> {
+  const cacheKey = `${type}:${id}`;
+  const cached = entityDetailCache.get(cacheKey);
+  if (cached && (Date.now() - cached.timestamp < ENTITY_CACHE_TTL_MS)) {
+    return cached.data;
+  }
+
+  let result: any = null;
+
   // First check in-memory seed (fastest for mock IDs)
   switch (type) {
     case "figure": {
       const seedMatch = FIGURES.find(f => f.id === id);
-      if (seedMatch) return seedMatch;
-      if (pool) {
-        return await getFigureDetailFromDb(id, pool);
+      if (seedMatch) result = seedMatch;
+      else if (pool) {
+        result = await getFigureDetailFromDb(id, pool);
       }
-      return null;
+      break;
     }
     case "line": {
       const seedMatch = LINES.find(l => l.id === id);
-      if (seedMatch) return seedMatch;
-      if (pool) {
-        return await getLineDetailFromDb(id, pool);
+      if (seedMatch) result = seedMatch;
+      else if (pool) {
+        result = await getLineDetailFromDb(id, pool);
       }
-      return null;
+      break;
     }
     case "character": {
       const seedMatch = CHARACTERS.find(c => c.id === id);
-      if (seedMatch) return seedMatch;
-      if (pool) {
-        return await getCharacterDetailFromDb(id, pool);
+      if (seedMatch) result = seedMatch;
+      else if (pool) {
+        result = await getCharacterDetailFromDb(id, pool);
       }
-      return null;
+      break;
     }
     case "franchise": {
       const seedMatch = FRANCHISES.find(f => f.id === id);
-      if (seedMatch) return seedMatch;
-      if (pool) {
-        return await getFranchiseDetailFromDb(id, pool);
+      if (seedMatch) result = seedMatch;
+      else if (pool) {
+        result = await getFranchiseDetailFromDb(id, pool);
       }
-      return null;
+      break;
     }
     case "variant": {
       const seedMatch = VARIANTS.find(v => v.id === id);
-      if (seedMatch) return seedMatch;
-      if (pool) {
-        return await getVariantDetailFromDb(id, pool);
+      if (seedMatch) result = seedMatch;
+      else if (pool) {
+        result = await getVariantDetailFromDb(id, pool);
       }
-      return null;
+      break;
     }
     case "product_release": {
       const seedMatch = PRODUCT_RELEASES.find(pr => pr.id === id);
-      if (seedMatch) return seedMatch;
-      if (pool) {
-        return await getProductReleaseDetailFromDb(id, pool);
+      if (seedMatch) result = seedMatch;
+      else if (pool) {
+        result = await getProductReleaseDetailFromDb(id, pool);
       }
-      return null;
+      break;
     }
     case "manufacturer": {
       const seedMatch = MANUFACTURERS.find(m => m.id === id);
-      if (seedMatch) return seedMatch;
-      if (pool) {
-        return await getManufacturerDetailFromDb(id, pool);
+      if (seedMatch) result = seedMatch;
+      else if (pool) {
+        result = await getManufacturerDetailFromDb(id, pool);
       }
-      return null;
+      break;
     }
     default:
-      return null;
+      result = null;
   }
+
+  if (result) {
+    entityDetailCache.set(cacheKey, { data: result, timestamp: Date.now() });
+  }
+
+  return result;
 }
 
 /**
  * Loads all catalog records from DB and joins them with seeds.
+ * Employs server-side caching so repeated client requests consume zero Neon egress.
  */
 export async function getAllCatalog(pool: pg.Pool | null): Promise<{
   figures: FigureDetailResponseDto[];
@@ -534,6 +569,11 @@ export async function getAllCatalog(pool: pg.Pool | null): Promise<{
   franchises: FranchiseDetailResponseDto[];
   manufacturers: ManufacturerDetailResponseDto[];
 }> {
+  const now = Date.now();
+  if (catalogCache && (now - catalogCacheTimestamp < CATALOG_CACHE_TTL_MS)) {
+    return catalogCache;
+  }
+
   // Start with seed data
   const figuresMap = new Map<string, FigureDetailResponseDto>();
   const linesMap = new Map<string, LineDetailResponseDto>();
@@ -598,11 +638,16 @@ export async function getAllCatalog(pool: pg.Pool | null): Promise<{
     }
   }
 
-  return {
+  const result = {
     figures: Array.from(figuresMap.values()),
     lines: Array.from(linesMap.values()),
     characters: Array.from(charactersMap.values()),
     franchises: Array.from(franchisesMap.values()),
     manufacturers: Array.from(manufacturersMap.values())
   };
+
+  catalogCache = result;
+  catalogCacheTimestamp = now;
+
+  return result;
 }

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { EntityType } from '../../types/domain';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { VersionBadge } from '../shared/VersionBadge';
 
 export type MainNavView = 
   | 'dashboard' 
@@ -134,6 +135,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="flex items-center justify-between font-mono text-[10px]">
           <span>{t('databank.title', 'CATALOGUE ARCHIVE')}</span>
           <span className="text-emerald-500 font-bold">● {t('scanner.online_status', 'ONLINE')}</span>
+        </div>
+        <div className="pt-1">
+          <VersionBadge variant="footer" className="w-full justify-between" />
         </div>
         {onOpenPrivacyModal && (
           <button

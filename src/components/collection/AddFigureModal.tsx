@@ -4,6 +4,7 @@ import { CbInput } from '../shared/CbInput';
 import { CbButton } from '../shared/CbButton';
 import { Badge } from '../shared/Badge';
 import { handleImageError, getFigureImageUrl } from '../../utils/imageFallback';
+import { compressImage } from '../../utils/imageCompressor';
 import { X, BookmarkPlus, DollarSign, Calendar, MapPin, FileText, Check, Tag, Film, Sparkles, ShieldCheck, ImagePlus, Trash2, Star, Upload, Plus } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -115,20 +116,36 @@ export const AddFigureModal: React.FC<AddFigureModalProps> = ({
     setShowUrlInput(false);
   }, [isOpen, initialData, selectedVariantId, selectedReleaseId, figure?.id]);
 
-  const handleMultipleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMultipleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (typeof reader.result === 'string') {
-          const resultStr = reader.result;
-          setImages(prev => prev.includes(resultStr) ? prev : [...prev, resultStr]);
+    for (const file of files) {
+      try {
+        const compressed = await compressImage(file, 800, 0.75);
+        if (compressed) {
+          let finalUrl = compressed;
+          try {
+            const uploadRes = await fetch('/api/upload/image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: compressed }),
+            });
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json();
+              if (uploadData.url) {
+                finalUrl = uploadData.url;
+              }
+            }
+          } catch (uploadErr) {
+            console.warn('Could not persist to storage endpoint, using compressed fallback:', uploadErr);
+          }
+          setImages(prev => prev.includes(finalUrl) ? prev : [...prev, finalUrl]);
         }
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (err) {
+        console.warn('Failed to compress image:', err);
+      }
+    }
     // Reset file input
     e.target.value = '';
   };
@@ -320,56 +337,76 @@ export const AddFigureModal: React.FC<AddFigureModalProps> = ({
                 </div>
               )}
 
-              {/* Thumbnails list */}
+              {/* Thumbnails preview with prominent cover selector */}
               {images.length === 0 ? (
                 <div className="text-center py-4 border border-dashed border-slate-300 dark:border-slate-700 rounded-lg text-xs text-slate-400">
                   Cap imatge afegida. Puja una o més fotos (frontal, blíster, dors, estat).
                 </div>
               ) : (
-                <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-0.5 scrollbar-thin">
-                  {images.map((imgSrc, idx) => (
-                    <div
-                      key={idx}
-                      className={`relative group shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-all ${
-                        idx === 0
-                          ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-sm'
-                          : 'border-slate-200 dark:border-slate-700 opacity-90 hover:opacity-100'
-                      }`}
-                    >
-                      <img
-                        src={getFigureImageUrl(imgSrc)}
-                        alt={`Figura ${idx + 1}`}
-                        onError={handleImageError}
-                        className="w-full h-full object-cover"
-                      />
-                      {/* Primary badge */}
-                      {idx === 0 ? (
-                        <div className="absolute top-1 left-1 bg-amber-500 text-slate-950 font-bold text-[9px] px-1 rounded flex items-center gap-0.5 shadow-xs">
-                          <Star className="w-2.5 h-2.5 fill-current" />
-                          <span>Portada</span>
-                        </div>
-                      ) : (
+                <div className="space-y-2 pt-1">
+                  <div className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg">
+                    <span className="flex items-center gap-1.5 font-medium text-amber-800 dark:text-amber-300">
+                      <Star className="w-3.5 h-3.5 fill-amber-500 text-amber-500 shrink-0" />
+                      <span><strong>Foto de portada:</strong> Toca qualsevol foto o el botó daurat per triar quina és la imatge principal.</span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 overflow-x-auto pb-2 pt-1 scrollbar-thin">
+                    {images.map((imgSrc, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => {
+                          if (idx !== 0) handleSetPrimaryImage(idx);
+                        }}
+                        className={`relative group shrink-0 w-24 h-24 rounded-xl overflow-hidden border-2 transition-all cursor-pointer ${
+                          idx === 0
+                            ? 'border-amber-500 ring-2 ring-amber-500/30 shadow-md scale-[1.02]'
+                            : 'border-slate-200 dark:border-slate-700 hover:border-amber-400/60 opacity-90 hover:opacity-100'
+                        }`}
+                      >
+                        <img
+                          src={getFigureImageUrl(imgSrc)}
+                          alt={`Figura ${idx + 1}`}
+                          onError={handleImageError}
+                          className="w-full h-full object-cover"
+                        />
+
+                        {/* Primary badge or Make Primary Button */}
+                        {idx === 0 ? (
+                          <div className="absolute top-1 left-1 bg-amber-500 text-slate-950 font-black text-[9px] px-1.5 py-0.5 rounded flex items-center gap-1 shadow-sm">
+                            <Star className="w-2.5 h-2.5 fill-current" />
+                            <span>PORTADA</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSetPrimaryImage(idx);
+                            }}
+                            title="Establir com a foto de portada"
+                            className="absolute bottom-1 inset-x-1 py-1 rounded bg-slate-900/90 hover:bg-amber-500 hover:text-slate-950 text-amber-400 text-[9px] font-bold flex items-center justify-center gap-1 transition-all shadow-md cursor-pointer border border-amber-500/40"
+                          >
+                            <Star className="w-2.5 h-2.5 fill-current" />
+                            <span>Fer portada</span>
+                          </button>
+                        )}
+
+                        {/* Remove button */}
                         <button
                           type="button"
-                          onClick={() => handleSetPrimaryImage(idx)}
-                          title="Establir com a imatge de portada"
-                          className="absolute top-1 left-1 p-1 rounded bg-slate-900/80 text-slate-200 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveImage(idx);
+                          }}
+                          title="Eliminar aquesta imatge"
+                          className="absolute top-1 right-1 p-1 rounded-full bg-slate-950/80 hover:bg-rose-600 text-slate-300 hover:text-white transition-colors cursor-pointer"
                         >
-                          <Star className="w-3 h-3" />
+                          <Trash2 className="w-3 h-3" />
                         </button>
-                      )}
-
-                      {/* Remove button */}
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveImage(idx)}
-                        title="Eliminar aquesta imatge"
-                        className="absolute top-1 right-1 p-1 rounded bg-rose-600/90 hover:bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

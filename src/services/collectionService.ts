@@ -89,11 +89,60 @@ function loadFromStorage(): OwnedFigure[] {
   return initial;
 }
 
-function saveToStorage(collection: OwnedFigure[]): void {
+/**
+ * Trims oversized base64 images from items saved to localStorage to prevent quota exhaustion.
+ * Full images remain untouched in memory and on the server.
+ */
+function sanitizeItemForStorage(item: OwnedFigure): OwnedFigure {
+  let figureImageUrl = item.figureImageUrl;
+  // Preserve user uploaded photos up to 400KB in localStorage; fallback only if massive
+  if (typeof figureImageUrl === 'string' && figureImageUrl.startsWith('data:image') && figureImageUrl.length > 400000) {
+    figureImageUrl = '/cardback_placeholder.jpeg';
+  }
+
+  const images = (item.images || []).map(img => {
+    if (typeof img === 'string' && img.startsWith('data:image') && img.length > 400000) {
+      return '/cardback_placeholder.jpeg';
+    }
+    return img;
+  });
+
+  return {
+    ...item,
+    figureImageUrl,
+    images
+  };
+}
+
+function cleanupStorageQuota(): void {
   try {
-    localStorage.setItem(storageKey(), JSON.stringify(collection));
-  } catch (e) {
-    console.error('Failed to save collection to localStorage', e);
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('cb_tmp_') || key.startsWith('cb_cache_') || key.includes('_old_'))) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch {}
+}
+
+function saveToStorage(collection: OwnedFigure[]): void {
+  const safeCollection = collection.map(sanitizeItemForStorage);
+  try {
+    localStorage.setItem(storageKey(), JSON.stringify(safeCollection));
+  } catch (e: any) {
+    console.warn('Initial localStorage.setItem exceeded quota, performing emergency cleanup:', e?.message || e);
+    cleanupStorageQuota();
+    try {
+      // Second attempt: strip all inline base64 images completely to guarantee fit
+      const minimalCollection = safeCollection.map(it => ({
+        ...it,
+        figureImageUrl: (it.figureImageUrl && it.figureImageUrl.startsWith('data:image')) ? '/cardback_placeholder.jpeg' : it.figureImageUrl,
+        images: (it.images || []).filter(img => typeof img === 'string' && !img.startsWith('data:image'))
+      }));
+      localStorage.setItem(storageKey(), JSON.stringify(minimalCollection));
+    } catch (finalErr) {
+      console.warn('localStorage is full; keeping collection safely in active memory:', finalErr);
+    }
   }
   listeners.forEach(cb => cb(collection));
 }

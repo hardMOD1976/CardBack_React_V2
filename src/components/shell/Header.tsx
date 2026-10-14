@@ -6,17 +6,13 @@ import { ApiService } from '../../services/apiService';
 import { EntityType, GlobalSearchResponseDto } from '../../types/domain';
 import { 
   Search, 
-  Sun, 
-  Moon, 
   User, 
   Bookmark, 
   Layers, 
   ArrowRight, 
   SlidersHorizontal,
   X,
-  PackageCheck,
-  ScanBarcode,
-  Palette
+  PackageCheck
 } from 'lucide-react';
 
 import { MainNavView } from './Sidebar';
@@ -25,7 +21,7 @@ import { CardbackLogo } from '../brand/CardbackLogo';
 import { LanguageSelector } from './LanguageSelector';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { SkinSelectorModal } from './SkinSelectorModal';
+import { VersionBadge } from '../shared/VersionBadge';
 
 interface HeaderProps {
   searchQuery: string;
@@ -34,8 +30,8 @@ interface HeaderProps {
   onSearchClear: () => void;
   onNavigate: (type: EntityType, id: string) => void;
   onOpenView: (view: MainNavView | 'search') => void;
-  theme: 'dark' | 'light';
-  onToggleTheme: () => void;
+  theme?: 'dark' | 'light';
+  onToggleTheme?: () => void;
   collectionCount: number;
   collectionValue: number;
   onOpenAuth: () => void;
@@ -57,11 +53,10 @@ export const Header: React.FC<HeaderProps> = ({
   currentUser
 }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [skinModalOpen, setSkinModalOpen] = useState(false);
   const [liveResults, setLiveResults] = useState<GlobalSearchResponseDto | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { t } = useLanguage();
-  const { skin, mode, toggleMode } = useTheme();
+  const { skin } = useTheme();
 
   // Live search debouncing for header dropdown
   useEffect(() => {
@@ -113,13 +108,13 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <>
-      <header className={`sticky top-0 z-50 h-16 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md px-4 lg:px-6 flex items-center justify-between gap-4 transition-all ${skinBorderClass}`}>
+      <header className={`sticky top-0 z-50 h-16 bg-white/95 dark:bg-slate-950/95 backdrop-blur-md px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2.5 sm:gap-4 transition-all max-w-full ${skinBorderClass}`}>
         {/* Brand Identity / Logo */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <button
             type="button"
             onClick={() => onOpenView('dashboard')}
-            className="flex items-center gap-3 text-left group focus:outline-none cursor-pointer py-1"
+            className="flex items-center gap-2 sm:gap-3 text-left group focus:outline-none cursor-pointer py-1"
             title={t('dashboard.welcome_title', 'Cardback')}
           >
             {/* Official Cardback Logo */}
@@ -146,10 +141,13 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </div>
           </button>
+          <div className="flex items-center ml-0.5 sm:ml-1">
+            <VersionBadge variant="header" />
+          </div>
         </div>
 
       {/* Global Search Bar with verified clearing and live popover */}
-      <div className="flex-1 max-w-xl relative" ref={dropdownRef}>
+      <div className="flex-1 min-w-0 max-w-xl relative" ref={dropdownRef}>
         <CbInput
           id="header-global-search"
           value={searchQuery}
@@ -237,13 +235,13 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
 
-      {/* Right Controls: Collection Stats, Language Selector, Theme Toggle, Auth */}
-      <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
+      {/* Right Controls: Collection Stats, Language Selector, User Account */}
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
         {/* Quick Collection Badge */}
         <button
           type="button"
           onClick={() => onOpenView('collection')}
-          className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-amber-500/40 bg-slate-50 dark:bg-slate-900 text-xs text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
+          className="hidden md:flex items-center gap-2 h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:border-amber-500/40 bg-slate-50 dark:bg-slate-900 text-xs text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
           title={t('nav.collection', 'Open Collection')}
         >
           <Bookmark className="w-3.5 h-3.5 text-amber-500" />
@@ -256,69 +254,27 @@ export const Header: React.FC<HeaderProps> = ({
           </span>
         </button>
 
-        {/* Quick Barcode Scanner Shortcut */}
-        <button
-          type="button"
-          id="header-scan-barcode-btn"
-          onClick={() => onOpenView('scan_barcode')}
-          aria-label={t('nav.scan_barcode', 'Scan barcode')}
-          title={t('nav.scan_barcode', 'Scan action figure barcode')}
-          className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1.5"
-        >
-          <ScanBarcode className="w-4 h-4 text-amber-500" />
-          <span className="hidden xl:inline text-xs font-semibold">{t('nav.quick_scan', 'Scan')}</span>
-        </button>
-
         {/* Multi-language Selector (8 languages supported) */}
         <LanguageSelector />
 
-        {/* 80s Themes & Skin Selector Button */}
+        {/* User Account Button & Session / Logout Access */}
         <button
           type="button"
-          id="header-skin-selector-btn"
-          onClick={() => setSkinModalOpen(true)}
-          aria-label={t('skin.button_label', 'Personalitzar Skin i Tema')}
-          title={t('skin.button_title', 'Tria entre Arxiu Modern, Kenner 1978 Cardback o Neon 80s')}
-          className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center gap-1.5 focus-visible:ring-2 focus-visible:ring-amber-500"
-        >
-          <Palette className="w-4 h-4 text-amber-500" />
-          <span className="hidden lg:inline text-xs font-semibold">
-            {skin === 'vintage-kenner' ? 'Kenner ’78' : skin === 'retro-neon' ? 'Neon ’84' : 'Modern'}
-          </span>
-        </button>
-
-        {/* Light / Dark Theme Toggle */}
-        <button
-          type="button"
-          onClick={onToggleTheme}
-          aria-label={theme === 'dark' ? t('common.theme_light', 'Switch to light mode') : t('common.theme_dark', 'Switch to dark mode')}
-          title={theme === 'dark' ? t('common.theme_light', 'Switch to light mode') : t('common.theme_dark', 'Switch to dark mode')}
-          className="p-2 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-amber-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-        >
-          {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
-        </button>
-
-        {/* User Account Button */}
-        <button
-          type="button"
+          id="header-user-btn"
           onClick={onOpenAuth}
-          className="flex items-center gap-2 p-1.5 sm:px-3 sm:py-1.5 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 transition-colors cursor-pointer"
+          title={currentUser ? `${currentUser.name} (${t('auth.sign_out', 'Tancar sessió')})` : t('nav.sign_in', 'Sign In')}
+          aria-label={currentUser ? currentUser.name : t('nav.sign_in', 'Sign In')}
+          className="flex items-center gap-2 h-9 px-2 sm:px-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 transition-colors cursor-pointer shrink-0"
         >
-          <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold flex items-center justify-center text-xs">
-            {currentUser ? currentUser.name.charAt(0) : <User className="w-3.5 h-3.5" />}
+          <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold flex items-center justify-center text-xs shrink-0">
+            {currentUser ? currentUser.name.charAt(0).toUpperCase() : <User className="w-3.5 h-3.5" />}
           </div>
-          <span className="hidden md:inline font-medium">
+          <span className="hidden md:inline font-medium truncate max-w-[120px]">
             {currentUser ? currentUser.name : t('nav.sign_in', 'Sign In')}
           </span>
         </button>
       </div>
     </header>
-
-    {/* Accessible 80s Skin & Theme Selector Modal */}
-    <SkinSelectorModal 
-      isOpen={skinModalOpen} 
-      onClose={() => setSkinModalOpen(false)} 
-    />
   </>
   );
 };

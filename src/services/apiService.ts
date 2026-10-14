@@ -30,8 +30,23 @@ import {
 
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('cb_token') || ''}` });
 
-// Dynamic stores hydrated from seed and live server/PostgreSQL
-let figuresStore: FigureDetailResponseDto[] = [...SEED_FIGURES];
+const CUSTOM_FIGURES_KEY = 'cardback_custom_community_figures';
+
+function loadCustomFigures(): FigureDetailResponseDto[] {
+  try {
+    const raw = localStorage.getItem(CUSTOM_FIGURES_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {}
+  return [];
+}
+
+const initialCustomFigures = loadCustomFigures();
+
+// Dynamic stores hydrated from seed, custom community figures, and live server/PostgreSQL
+let figuresStore: FigureDetailResponseDto[] = [...initialCustomFigures, ...SEED_FIGURES];
 let linesStore: LineDetailResponseDto[] = [...SEED_LINES];
 let charactersStore: CharacterDetailResponseDto[] = [...SEED_CHARACTERS];
 let franchisesStore: FranchiseDetailResponseDto[] = [...SEED_FRANCHISES];
@@ -43,6 +58,11 @@ let productReleasesStore: ProductReleaseDetailResponseDto[] = [...SEED_PRODUCT_R
 const entityCache = new Map<string, any>();
 
 // Seed cache initially
+initialCustomFigures.forEach(f => {
+  entityCache.set(`figure:${f.id}`, f);
+  if (Array.isArray(f.variants)) f.variants.forEach(v => entityCache.set(`variant:${v.id}`, v));
+  if (Array.isArray(f.productReleases)) f.productReleases.forEach(pr => entityCache.set(`product_release:${pr.id}`, pr));
+});
 SEED_FIGURES.forEach(f => entityCache.set(`figure:${f.id}`, f));
 SEED_LINES.forEach(l => entityCache.set(`line:${l.id}`, l));
 SEED_CHARACTERS.forEach(c => entityCache.set(`character:${c.id}`, c));
@@ -56,12 +76,18 @@ SEED_PRODUCT_RELEASES.forEach(pr => entityCache.set(`product_release:${pr.id}`, 
 
 let isSyncing = false;
 
+let lastSyncTimestamp = 0;
+const SYNC_THROTTLE_MS = 2 * 60 * 1000; // 2 minutes throttle
+
 /**
  * Background synchronization with live Neon PostgreSQL catalogue
  */
-export async function syncCatalogueWithServer(): Promise<boolean> {
+export async function syncCatalogueWithServer(force = false): Promise<boolean> {
+  const now = Date.now();
+  if (!force && (now - lastSyncTimestamp < SYNC_THROTTLE_MS)) return true;
   if (isSyncing) return true;
   isSyncing = true;
+  lastSyncTimestamp = now;
   try {
     const res = await fetch('/api/catalog/all');
     if (res.ok) {
@@ -379,6 +405,86 @@ export const ApiService = {
     return fig ? { ...fig } : null;
   },
 
+  /**
+   * Registers a dynamically identified or scanned figure and its release into the active in-memory store.
+   * This enables instant navigation to figure details, collection addition, and variant inspection without refresh.
+   */
+  registerDynamicFigure(figure: FigureDetailResponseDto, release?: ProductReleaseDetailResponseDto): void {
+    if (!figure || !figure.id) return;
+    const existingIndex = figuresStore.findIndex(f => f.id === figure.id);
+    if (existingIndex >= 0) {
+      figuresStore[existingIndex] = { ...figuresStore[existingIndex], ...figure };
+    } else {
+      figuresStore.unshift(figure);
+    }
+    entityCache.set(`figure:${figure.id}`, figure);
+
+    if (release && release.id) {
+      const relIndex = productReleasesStore.findIndex(r => r.id === release.id);
+      if (relIndex >= 0) {
+        productReleasesStore[relIndex] = { ...productReleasesStore[relIndex], ...release };
+      } else {
+        productReleasesStore.unshift(release);
+      }
+      entityCache.set(`product_release:${release.id}`, release);
+    }
+
+    if (figure.line?.id && !linesStore.some(l => l.id === figure.line.id)) {
+      linesStore.push({
+        id: figure.line.id,
+        name: figure.line.name,
+        manufacturerId: 'mfr-hasbro',
+        manufacturerName: figure.line.manufacturerName || 'Hasbro',
+        franchiseId: figure.franchise?.id || 'fran-star-wars',
+        franchiseName: figure.franchise?.name || 'Star Wars',
+        startYear: figure.line.startYear || figure.year,
+        scale: figure.line.scale || '3.75 inch',
+        description: `Línia oficial: ${figure.line.name}.`,
+        collectorNotes: `Línia creada el ${figure.line.startYear || figure.year}.`,
+        totalFiguresCount: 1,
+        representativeImageUrl: figure.imageUrl,
+        isActive: true,
+        figures: [{
+          id: figure.id,
+          name: figure.name,
+          code: figure.code,
+          year: figure.year,
+          imageUrl: figure.imageUrl,
+          lineId: figure.line.id,
+          lineName: figure.line.name,
+          characterId: figure.character?.id || `char-${figure.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+          characterName: figure.character?.name || figure.name,
+          variantsCount: figure.variants?.length || 1,
+          releasesCount: figure.productReleases?.length || 1
+        }]
+      });
+      entityCache.set(`line:${figure.line.id}`, linesStore[linesStore.length - 1]);
+    }
+
+    if (figure.character?.id && !charactersStore.some(c => c.id === figure.character.id)) {
+      charactersStore.push({
+        id: figure.character.id,
+        name: figure.character.name,
+        franchiseId: figure.franchise?.id || 'fran-star-wars',
+        franchiseName: figure.franchise?.name || 'Star Wars',
+        description: figure.character.description || `Personatge: ${figure.character.name}`,
+        imageUrl: figure.imageUrl,
+        firstLoreAppearance: 'Star Wars Saga',
+        firstFigureAppearance: {
+          year: figure.year,
+          figureName: figure.name,
+          lineName: figure.line.name,
+          figureId: figure.id
+        },
+        appearancesAcrossLines: [],
+        totalFiguresCount: 1,
+        variantsCount: 1,
+        galleryUrls: [figure.imageUrl]
+      });
+      entityCache.set(`character:${figure.character.id}`, charactersStore[charactersStore.length - 1]);
+    }
+  },
+
   // Manufacturers
   getManufacturers(): ManufacturerDetailResponseDto[] {
     return [...manufacturersStore];
@@ -693,7 +799,7 @@ export const ApiService = {
   // Live Online Barcode Validation & Matching
   async lookupBarcodeOnline(
     barcode: string,
-    context?: { figureNameHint?: string; lineNameHint?: string }
+    context?: { figureNameHint?: string; lineNameHint?: string; forceRefresh?: boolean }
   ): Promise<{
     found: boolean;
     isToyOrActionFigure: boolean;
@@ -725,7 +831,7 @@ export const ApiService = {
       const res = await fetch('/api/scanner/lookup-barcode-online', {
         method: 'POST',
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barcode: barcode.trim(), context })
+        body: JSON.stringify({ barcode: barcode.trim(), context, forceRefresh: context?.forceRefresh })
       });
       return await res.json();
     } catch (err: any) {
@@ -742,6 +848,8 @@ export const ApiService = {
       };
     }
   },
+
+
 
   // Immediate in-memory registration for newly proposed figures
   registerCommunityProposal(figure: {
@@ -827,6 +935,16 @@ export const ApiService = {
 
     figuresStore = [newFig, ...figuresStore.filter(f => f.id !== newFig.id)];
     entityCache.set(`figure:${newFig.id}`, newFig);
+
+    // Persist into localStorage so custom figures survive page refresh
+    try {
+      const existing = loadCustomFigures();
+      const updated = [newFig, ...existing.filter(f => f.id !== newFig.id)];
+      localStorage.setItem(CUSTOM_FIGURES_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.warn('Could not persist custom figure to localStorage:', e);
+    }
+
     return newFig;
   }
 };

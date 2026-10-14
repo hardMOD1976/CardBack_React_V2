@@ -186,6 +186,16 @@ export const STAR_WARS_LINES: SeedLine[] = [
     startYear: 2024,
     scale: '3.75" & 6"',
     description: 'Hasbro figures for the upcoming adventurous coming-of-age Star Wars saga starring Jude Law as Jod Na Nawood.'
+  },
+  {
+    id: 'line-sw-tfa',
+    name: 'Star Wars: The Force Awakens (2015–2016)',
+    franchiseId: 'fran-star-wars',
+    manufacturerId: 'mfr-hasbro',
+    startYear: 2015,
+    endYear: 2016,
+    scale: '3.75 inch',
+    description: 'The monumental Hasbro relaunch for Star Wars: The Force Awakens, featuring 3.75" figures with the Build-A-Weapon pack-in gimmick.'
   }
 ];
 
@@ -774,5 +784,57 @@ export const STAR_WARS_FIGURES: SeedFigure[] = [
     description: 'The mysterious Force-wielding explorer from Star Wars: Skeleton Crew portrayed by Jude Law.',
     imageUrl: 'https://images.unsplash.com/photo-1546776310-eef45dd6d63c?w=800&auto=format&fit=crop&q=80',
     character: { id: 'char-jod-na-nawood', name: 'Jod Na Nawood', desc: 'Rambling explorer of the Unknown Regions.', affiliation: 'Independent' }
+  },
+
+  // ==========================================
+  // THE FORCE AWAKENS 3.75" (2015-2016)
+  // ==========================================
+  {
+    id: 'fig-sw-poe-dameron-tfa',
+    name: 'Poe Dameron (Resistance Pilot)',
+    code: 'B3449',
+    lineId: 'line-sw-tfa',
+    year: 2015,
+    barcode: '630509345403',
+    description: 'Figura oficial Hasbro de 3,75 polzades de Poe Dameron amb uniforme de vol de la Resistència de Star Wars: The Force Awakens. Inclou casc de vol extraïble, pistola blàster Glie-44 i accessori combinable Build-A-Weapon. Codi UPC: 630509345403 / EAN: 5010994917456.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    character: { id: 'char-poe-dameron', name: 'Poe Dameron', desc: 'Resistance starfighter pilot and commander.', affiliation: 'Resistance' }
+  },
+
+  // ==========================================
+  // EPISODE I: THE PHANTOM MENACE (1999 CommTech)
+  // ==========================================
+  {
+    id: 'fig-sw-queen-amidala-naboo',
+    name: 'Queen Amidala (Naboo)',
+    code: 'EP1-84095',
+    lineId: 'line-sw-ep1',
+    year: 1999,
+    barcode: '076930840955',
+    description: 'Official 1999 Hasbro Star Wars Episode I: The Phantom Menace 3.75" figure of Queen Amidala in red ceremonial Naboo royal gown with interactive CommTech voice chip.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    character: { id: 'char-queen-amidala', name: 'Queen Amidala', desc: 'Elected monarch of the sovereign planet of Naboo.', affiliation: 'Galactic Republic' }
+  },
+  {
+    id: 'fig-sw-queen-amidala-coruscant',
+    name: 'Queen Amidala (Coruscant Senate)',
+    code: 'EP1-84115',
+    lineId: 'line-sw-ep1',
+    year: 1999,
+    barcode: '076930841150',
+    description: 'Official 1999 Hasbro Star Wars Episode I: The Phantom Menace figure of Queen Amidala addressing the Galactic Senate on Coruscant in ornate ceremonial gown with CommTech chip.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    character: { id: 'char-queen-amidala', name: 'Queen Amidala', desc: 'Elected monarch of the sovereign planet of Naboo.', affiliation: 'Galactic Republic' }
+  },
+  {
+    id: 'fig-sw-queen-amidala-theed',
+    name: 'Queen Amidala (Battle of Theed Invasion)',
+    code: 'EP1-84135',
+    lineId: 'line-sw-ep1',
+    year: 1999,
+    barcode: '076930841358',
+    description: 'Hasbro Star Wars Episode I figure of Queen Amidala in burgundy battle dress wielding Ascension Gun blaster during the liberation of Theed Palace.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    character: { id: 'char-queen-amidala', name: 'Queen Amidala', desc: 'Elected monarch of the sovereign planet of Naboo.', affiliation: 'Galactic Republic' }
   }
 ];

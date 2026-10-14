@@ -62,6 +62,14 @@ interface IdentifiedResult {
 
 const SAMPLE_FIGURES = [
   {
+    label: 'Star Wars Ep. I Queen Amidala Naboo (1999)',
+    id: 'fig-sw-queen-amidala-naboo',
+    variantId: 'var-sw-amidala-naboo-std',
+    category: 'toy',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    description: '1999 Hasbro Episode I: The Phantom Menace — Vestit cerimonial vermell reial de Naboo amb xip CommTech'
+  },
+  {
     label: 'POTF2 Darth Vader (Long Saber)',
     id: 'fig-sw-vader-potf2',
     variantId: 'var-vader-potf2-long',
@@ -89,6 +97,13 @@ const SAMPLE_FIGURES = [
     category: 'toy',
     imageUrl: 'https://images.unsplash.com/photo-1566576912321-d58ddd7a6088?w=600&auto=format&fit=crop&q=80',
     description: 'Playmates 10-back amb cap de goma tova i katanes dobles'
+  },
+  {
+    label: '1999 Queen Amidala (Naboo Royal Gown)',
+    id: 'fig-sw-queen-amidala-naboo',
+    category: 'toy',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=600&auto=format&fit=crop&q=80',
+    description: 'Hasbro Star Wars Episodi I (1999) amb vestit cerimonial vermell de Naboo i xip de veu interactiu CommTech'
   },
   {
     label: 'Poma Fresca (Test: No Joguina -> Not Found)',
@@ -256,8 +271,13 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
       // Call Real Gemini Multimodal AI Endpoint
       const aiResponse = await ApiService.identifyFigureWithAi(imageUrl);
 
-      // Handle Not Found (Non-Toy or Unrecognized Subject)
+      // Handle Not Found or Server Errors
       if (aiResponse.isToyOrActionFigure === false || aiResponse.found === false) {
+        if (aiResponse.notFoundReason === 'rate_limit_exceeded' || aiResponse.notFoundReason === 'service_unavailable_spike' || aiResponse.notFoundReason === 'vision_model_error') {
+          setErrorMessage(aiResponse.message || "El servei de visió intel·ligent té una alta demanda en aquest moment. Prova-ho en uns segons.");
+          setIsAnalyzing(false);
+          return;
+        }
         setNotFoundMessage(
           t('ai.non_toy', 'No matching collectible figure or toy was found.')
         );
@@ -268,6 +288,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
         setResult(null);
         setFoundOptions([]);
         setIsResultModalOpen(true);
+        setIsAnalyzing(false);
         return;
       }
 
@@ -373,56 +394,11 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
         setFoundOptions([]);
         setIsResultModalOpen(true);
       } else {
-        // Resilient fallback: offer identified figure proposal from the photo so the collector is never blocked
-        const fallbackId = `fig-photo-${Date.now().toString().slice(-4)}`;
-        const synthOptions: AiFigureOption[] = [
-          {
-            id: `opt-photo-1`,
-            title: "Figura d'acció reconeguda (Carded MOC)",
-            figureName: "Figura de Col·lecció",
-            lineName: "The Vintage Collection / Kenner",
-            franchiseName: "Star Wars",
-            manufacturer: "Hasbro / Kenner",
-            year: 2002,
-            variantName: "Edició Especial (MOC)",
-            packagingStatus: "Carded / Blister (MOC)",
-            description: "Figura fotografiada amb embalatge blíster. Revisa els camps per desar-la a la teva col·lecció.",
-            confidence: 90.0,
-            estimatedLooseValue: 25,
-            estimatedMocValue: 65,
-            identifyingFeatures: ["Targeta blíster de col·leccionista", "Figura articulada amb accessori"],
-            accessoriesIdentified: ["Blaster / Arma"],
-            moldingDetails: "Motlle original de producció",
-            authenticityNotes: "Embalatge original verificat",
-            source: "online_archive"
-          }
-        ];
-
-        setFoundOptions(synthOptions);
-        setSelectedOptionId(synthOptions[0].id);
-        setResult({
-          figureId: fallbackId,
-          figureName: "Figura de Col·lecció",
-          lineName: "The Vintage Collection / Kenner",
-          franchiseName: "Star Wars",
-          manufacturer: "Hasbro / Kenner",
-          year: 2002,
-          imageUrl: imageUrl,
-          confidence: 90.0,
-          packagingStatus: "Carded / Blister (MOC)",
-          detectedVariant: {
-            variantId: `var-${fallbackId}`,
-            variantName: "Edició Especial (MOC)",
-            rarity: "Standard Release",
-            identifyingFeatures: ["Targeta blíster de col·leccionista"],
-            estimatedLooseValue: 25,
-            estimatedMocValue: 65
-          },
-          moldingDetails: "Format clàssic col·leccionable",
-          authenticityNotes: "Fotografia registrada correctament",
-          accessoriesIdentified: ["Accessori original"]
-        });
-        setIsResultModalOpen(true);
+        // Do NOT invent a fake random figure when an error occurs!
+        const errMsg = err?.message?.includes("429") || err?.message?.includes("quota") || err?.message?.includes("RESOURCE_EXHAUSTED")
+          ? "S'ha superat el límit temporal de peticions a la IA (429). Si us plau, espera uns segons i torna-ho a provar."
+          : (err?.message || "No s'ha pogut identificar la figura en aquesta fotografia. Prova amb un altre angle o millor il·luminació.");
+        setErrorMessage(errMsg);
       }
     } finally {
       setIsAnalyzing(false);

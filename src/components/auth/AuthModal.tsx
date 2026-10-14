@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CbInput } from '../shared/CbInput';
 import { CbButton } from '../shared/CbButton';
-import { X, Lock, Mail, User, ShieldCheck, Sparkles, Check } from 'lucide-react';
+import { X, Lock, Mail, User, ShieldCheck, Sparkles, Check, Eye, EyeOff } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface AuthModalProps {
@@ -23,6 +23,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [isRegister, setIsRegister] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [name, setName] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -177,14 +178,26 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <label className="text-xs font-semibold text-slate-600 dark:text-slate-400">
                   {t('auth.password', 'Password')}
                 </label>
-                <CbInput
-                  type="password"
-                  value={password}
-                  onChange={setPassword}
-                  placeholder="••••••••"
-                  size="sm"
-                  icon={<Lock className="w-4 h-4" />}
-                />
+                <div className="relative flex items-center">
+                  <CbInput
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={setPassword}
+                    placeholder="••••••••"
+                    size="sm"
+                    icon={<Lock className="w-4 h-4" />}
+                    className="pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    aria-label={showPassword ? t('auth.hide_password', 'Amagar contrasenya') : t('auth.show_password', 'Mostrar contrasenya')}
+                    title={showPassword ? t('auth.hide_password', 'Amagar contrasenya') : t('auth.show_password', 'Mostrar contrasenya')}
+                    className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors cursor-pointer rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+                  >
+                    {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-between text-xs text-slate-500">

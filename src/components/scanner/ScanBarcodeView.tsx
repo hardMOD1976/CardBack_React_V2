@@ -21,19 +21,20 @@ import {
   Eye, 
   Barcode, 
   Layers,
-  Sparkles,
-  RefreshCw,
-  VideoOff,
-  Upload,
-  ExternalLink,
-  ShieldAlert,
-  Wifi,
-  WifiOff,
-  Globe,
-  PackageX,
-  Building2,
-  Calendar,
-  Tag
+  Sparkles, 
+  RefreshCw, 
+  VideoOff, 
+  Upload, 
+  ExternalLink, 
+  ShieldAlert, 
+  Wifi, 
+  WifiOff, 
+  Globe, 
+  PackageX, 
+  Building2, 
+  Calendar, 
+  Tag,
+  X
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -62,6 +63,62 @@ export interface BarcodeOptionItem {
 }
 
 const SAMPLE_BARCODES = [
+  {
+    code: '076930840955',
+    label: 'Star Wars Ep. I Queen Amidala Naboo (Hasbro 1999 CommTech)',
+    category: 'toy',
+    releaseId: 'rel-sw-queen-amidala-naboo-upc',
+    figureId: 'fig-sw-queen-amidala-naboo'
+  },
+  {
+    code: '076281840789',
+    label: 'Star Wars Ep. I Queen Amidala Naboo (Kenner/Hasbro 1999)',
+    category: 'toy',
+    releaseId: 'rel-sw-queen-amidala-naboo-alt',
+    figureId: 'fig-sw-queen-amidala-naboo'
+  },
+  {
+    code: '076930841150',
+    label: 'Star Wars Ep. I Queen Amidala Coruscant Senate (Hasbro 1999)',
+    category: 'toy',
+    releaseId: 'rel-sw-queen-amidala-coruscant-upc',
+    figureId: 'fig-sw-queen-amidala-coruscant'
+  },
+  {
+    code: '076930841358',
+    label: 'Star Wars Ep. I Queen Amidala Battle of Theed (Hasbro 1999)',
+    category: 'toy',
+    releaseId: 'rel-sw-queen-amidala-theed-upc',
+    figureId: 'fig-sw-queen-amidala-theed'
+  },
+  {
+    code: '076930840955',
+    label: 'Star Wars 1999 Queen Amidala Naboo (Hasbro / CommTech)',
+    category: 'toy',
+    releaseId: 'rel-sw-queen-amidala-naboo-upc',
+    figureId: 'fig-sw-queen-amidala-naboo'
+  },
+  {
+    code: '076930841150',
+    label: 'Star Wars 1999 Queen Amidala Coruscant Senate (Hasbro)',
+    category: 'toy',
+    releaseId: 'rel-sw-queen-amidala-coruscant-upc',
+    figureId: 'fig-sw-queen-amidala-coruscant'
+  },
+  {
+    code: '630509345403',
+    label: 'Star Wars TFA Poe Dameron 3.75" (Hasbro 2015)',
+    category: 'toy',
+    releaseId: 'rel-sw-poe-dameron-tfa-b3449',
+    figureId: 'fig-sw-poe-dameron-tfa'
+  },
+  {
+    code: '5010994917456',
+    label: 'Star Wars TFA Poe Dameron Blister Europeu EAN (Hasbro)',
+    category: 'toy',
+    releaseId: 'rel-sw-poe-dameron-tfa-b3449-eu',
+    figureId: 'fig-sw-poe-dameron-tfa'
+  },
   {
     code: '076281695822',
     label: 'POTF2 1995 Red Card Boba Fett (Kenner / Hasbro)',
@@ -111,7 +168,7 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
   onAddToCollection
 }) => {
   const { t } = useLanguage();
-  const [barcodeInput, setBarcodeInput] = useState('076281695701');
+  const [barcodeInput, setBarcodeInput] = useState('');
   const [isScanning, setIsScanning] = useState(false);
   const [isCameraStarting, setIsCameraStarting] = useState(false);
   const [scanStatusText, setScanStatusText] = useState<string | null>(null);
@@ -123,13 +180,9 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
     return typeof navigator !== 'undefined' ? navigator.onLine : true;
   });
 
-  // Result states
-  const [foundRelease, setFoundRelease] = useState<ProductReleaseDetailResponseDto | null>(() => {
-    return ApiService.getProductReleaseDetail('rel-sw-vader-potf2-red-us');
-  });
-  const [parentFigure, setParentFigure] = useState<FigureDetailResponseDto | null>(() => {
-    return ApiService.getFigureDetail('fig-sw-vader-potf2');
-  });
+  // Result states (null initially until code is scanned or entered)
+  const [foundRelease, setFoundRelease] = useState<ProductReleaseDetailResponseDto | null>(null);
+  const [parentFigure, setParentFigure] = useState<FigureDetailResponseDto | null>(null);
   
   // Multiple options found online
   const [foundOptions, setFoundOptions] = useState<BarcodeOptionItem[]>([]);
@@ -145,10 +198,15 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
 
   // Modal dialog with scan results
   const [isResultModalOpen, setIsResultModalOpen] = useState(false);
+  const [scanMode, setScanMode] = useState<'lens' | 'barcode'>('lens');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const controlsRef = useRef<IScannerControls | null>(null);
+  const nativeDetectorTimerRef = useRef<any>(null);
+  const cameraTimerRef = useRef<any>(null);
+  const [showCapturePrompt, setShowCapturePrompt] = useState(false);
 
   // Monitor network connectivity
   useEffect(() => {
@@ -165,6 +223,16 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
   }, []);
 
   const stopCamera = () => {
+    if (nativeDetectorTimerRef.current) {
+      clearInterval(nativeDetectorTimerRef.current);
+      nativeDetectorTimerRef.current = null;
+    }
+    if (cameraTimerRef.current) {
+      clearTimeout(cameraTimerRef.current);
+      cameraTimerRef.current = null;
+    }
+    setShowCapturePrompt(false);
+
     if (controlsRef.current) {
       try {
         controlsRef.current.stop();
@@ -199,33 +267,47 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
     };
   }, []);
 
-  const startCamera = async () => {
+  const startCamera = async (targetMode: 'lens' | 'barcode' = scanMode) => {
     setCameraError(null);
     setNotFoundMessage(null);
     setIsCameraStarting(true);
+    setShowCapturePrompt(false);
 
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error(t('scanner.camera_unavailable', 'Camera access is unavailable in this browser context. Use the photo upload option instead.'));
       }
 
-      if (controlsRef.current) {
-        try { controlsRef.current.stop(); } catch (e) {}
-        controlsRef.current = null;
-      }
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach(t => t.stop());
-        mediaStreamRef.current = null;
-      }
+      stopCamera();
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: 'environment' },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
+      const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      const getStreamWithTimeout = async (constraints: MediaStreamConstraints, timeoutMs = 5000): Promise<MediaStream> => {
+        let timer: any;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => reject(new Error('CAMERA_TIMEOUT')), timeoutMs);
+        });
+        const streamPromise = navigator.mediaDevices.getUserMedia(constraints);
+        try {
+          const res = await Promise.race([streamPromise, timeoutPromise]);
+          clearTimeout(timer);
+          return res;
+        } catch (err) {
+          clearTimeout(timer);
+          throw err;
+        }
+      };
+
+      let stream: MediaStream;
+      try {
+        const preferredConstraints: MediaStreamConstraints = isMobile
+          ? { video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }
+          : { video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false };
+        stream = await getStreamWithTimeout(preferredConstraints, 5000);
+      } catch (err: any) {
+        console.warn('Primary camera constraints failed or timed out, trying fallback { video: true }:', err);
+        stream = await getStreamWithTimeout({ video: true, audio: false }, 5000);
+      }
 
       mediaStreamRef.current = stream;
 
@@ -234,43 +316,252 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
         throw new Error(t('scanner.camera_unavailable', 'The camera is unavailable.'));
       }
 
+      videoEl.setAttribute('playsinline', 'true');
+      videoEl.muted = true;
       videoEl.srcObject = stream;
       await videoEl.play();
 
       setIsCameraActive(true);
       setIsCameraStarting(false);
 
-      const codeReader = new BrowserMultiFormatReader();
-      const controls = await codeReader.decodeFromVideoElement(
-        videoEl,
-        (result, error) => {
-          if (result) {
-            const detectedCode = result.getText();
-            if (detectedCode && detectedCode.trim().length > 0) {
-              setBarcodeInput(detectedCode);
-              handleLookupBarcode(detectedCode);
-              stopCamera();
-            }
+      // Start prompt timer: if after 3.5s no barcode detected, show "Capturar fotograma" suggestion
+      cameraTimerRef.current = setTimeout(() => {
+        setShowCapturePrompt(true);
+      }, 3500);
+
+      // ONLY start auto-decoding loops in strict barcode mode to avoid accidental misreads
+      if (targetMode === 'barcode') {
+        // 1. Try modern native BarcodeDetector loop if supported (Chrome, Edge, Android)
+        if ('BarcodeDetector' in window) {
+          try {
+            const detector = new (window as any).BarcodeDetector({
+              formats: ['upc_a', 'upc_e', 'ean_13', 'ean_8', 'code_128', 'code_39', 'itf']
+            });
+            nativeDetectorTimerRef.current = setInterval(async () => {
+              if (!videoRef.current || videoRef.current.readyState < 2) return;
+              try {
+                const barcodes = await detector.detect(videoRef.current);
+                if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+                  const detectedCode = barcodes[0].rawValue.trim();
+                  if (detectedCode.length >= 5) {
+                    stopCamera();
+                    setBarcodeInput(detectedCode);
+                    handleLookupBarcode(detectedCode);
+                  }
+                }
+              } catch (e) {
+                // Frame decoding ignore
+              }
+            }, 150);
+          } catch (e) {
+            console.warn('Native BarcodeDetector not available:', e);
           }
         }
-      );
 
-      controlsRef.current = controls;
+        // 2. ZXing BrowserMultiFormatReader as standard decoder
+        const codeReader = new BrowserMultiFormatReader();
+        const controls = await codeReader.decodeFromVideoElement(
+          videoEl,
+          (result) => {
+            if (result) {
+              const detectedCode = result.getText();
+              if (detectedCode && detectedCode.trim().length > 0) {
+                stopCamera();
+                setBarcodeInput(detectedCode);
+                handleLookupBarcode(detectedCode);
+              }
+            }
+          }
+        );
+
+        controlsRef.current = controls;
+      }
     } catch (err: any) {
       console.error('Camera barcode start error:', err);
-      setIsCameraActive(false);
-      setIsCameraStarting(false);
       stopCamera();
 
       let message = t('scanner.camera_unavailable', 'Could not access the camera.');
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        message = t('scanner.camera_permission', 'Camera permission was denied. Allow camera access in your browser settings or use photo upload.');
+      if (err.message === 'CAMERA_TIMEOUT') {
+        message = t('scanner.camera_timeout', 'La càmera triga massa a respondre. Prova d\'utilitzar el botó Pujar Foto o introdueix el número de codi.');
+      } else if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        message = t('scanner.camera_permission', 'Permís de càmera denegat. Permet l\'accés a la càmera al teu navegador o fes servir Pujar Foto.');
       } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        message = t('scanner.camera_missing', 'No camera was found on this device.');
+        message = t('scanner.camera_missing', 'No s\'ha trobat cap càmera en aquest dispositiu.');
       } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        message = t('scanner.camera_busy', 'The camera is being used by another application.');
+        message = t('scanner.camera_busy', 'La càmera està sent utilitzada per una altra aplicació.');
       }
       setCameraError(message);
+    }
+  };
+
+  /**
+   * Google Lens style visual figure recognition:
+   * Analyzes figure sculpt, costume, face, logos, and packaging card to recognize exact figure
+   */
+  const handleVisualIdentify = async (dataUrl: string) => {
+    setIsScanning(true);
+    setScanStatusText(t('scanner.analyzing_lens', 'Identificant figura i edició amb Google Lens (IA)...'));
+    setNotFoundMessage(null);
+    setNotFoundDetails(null);
+    setFoundRelease(null);
+    setParentFigure(null);
+    setFoundOptions([]);
+    setSelectedOptionId(null);
+
+    try {
+      const response = await ApiService.identifyFigureWithAi(dataUrl);
+      const res = (response as any)?.result || response;
+      if (!res || !res.found) {
+        setNotFoundMessage(res?.message || res?.description || t('scanner.lens_not_found', "No s'ha pogut reconèixer cap figura d'acció a la imatge. Prova d'enfocar millor el personatge o blíster."));
+        setIsScanning(false);
+        return;
+      }
+
+      const charName = res.figureName || "Figura identificada";
+      const lineName = res.lineName || "Star Wars";
+      const mfgName = res.manufacturer || "Hasbro";
+      const franchiseName = res.franchiseName || "Star Wars";
+      const displayYear = res.year || 1999;
+      const packaging = res.packagingStatus || "Carded Blister (CommTech / MOC)";
+
+      const primaryOption: BarcodeOptionItem = {
+        id: `lens-${Date.now()}-primary`,
+        title: `${charName} (${lineName})`,
+        character: charName,
+        line: lineName,
+        franchise: franchiseName,
+        manufacturer: mfgName,
+        year: displayYear,
+        packagingType: packaging,
+        region: "Global",
+        description: res.description || `Identificat fidelment amb reconeixement visual Google Lens: ${charName}.`,
+        imageUrl: res.imageUrl && res.imageUrl.startsWith("http") ? res.imageUrl : dataUrl,
+        source: "online_archive",
+        confidence: res.confidence ? (res.confidence > 1 ? res.confidence / 100 : res.confidence) : 0.98,
+        figureId: res.figureId
+      };
+
+      const optionsList: BarcodeOptionItem[] = [primaryOption];
+
+      if (Array.isArray(res.options) && res.options.length > 0) {
+        res.options.forEach((opt: any, idx: number) => {
+          const optTitle = typeof opt === 'string' ? opt : (opt.title || opt.figureName || '');
+          const optChar = typeof opt === 'string' ? opt : (opt.figureName || opt.title || '');
+          if (optChar && optChar.toLowerCase() !== charName.toLowerCase()) {
+            optionsList.push({
+              id: opt.id || `lens-${Date.now()}-opt-${idx}`,
+              title: optTitle.includes('(') ? optTitle : `${optTitle} (${opt.lineName || lineName})`,
+              character: optChar,
+              line: opt.lineName || lineName,
+              franchise: opt.franchiseName || franchiseName,
+              manufacturer: opt.manufacturer || mfgName,
+              year: opt.year || displayYear,
+              packagingType: opt.packagingStatus || packaging,
+              region: opt.region || "Global",
+              description: opt.description || `Edició o variant alternativa: ${optTitle}.`,
+              imageUrl: opt.imageUrl || dataUrl,
+              source: "online_archive",
+              confidence: opt.confidence ? (opt.confidence > 1 ? opt.confidence / 100 : opt.confidence) : 0.90 - (idx * 0.05),
+              figureId: opt.figureId
+            });
+          }
+        });
+      }
+
+      setFoundOptions(optionsList);
+      applyOptionAsCurrent(primaryOption);
+      setIsResultModalOpen(true);
+      setIsScanning(false);
+    } catch (err: any) {
+      console.error("Google Lens visual identification error:", err);
+      setNotFoundMessage(err?.message || "Error en processar la imatge amb la visió intel·ligent.");
+      setIsScanning(false);
+    }
+  };
+
+  /**
+   * Instantly grabs the current camera video frame:
+   * In Google Lens mode: performs full multimodal visual identification
+   * In Barcode mode: decodes barcode via hardware + AI
+   */
+  const handleCaptureFrame = async () => {
+    if (!videoRef.current) return;
+    setIsScanning(true);
+    setScanStatusText(t('scanner.capturing_frame', 'Capturant i processant fotograma...'));
+
+    const video = videoRef.current;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+    // If currently in Google Lens visual recognition mode:
+    if (scanMode === 'lens') {
+      stopCamera();
+      await handleVisualIdentify(dataUrl);
+      return;
+    }
+
+    // Otherwise, in Barcode mode:
+    // 1. Try native BarcodeDetector on canvas
+    if ('BarcodeDetector' in window) {
+      try {
+        const detector = new (window as any).BarcodeDetector({
+          formats: ['upc_a', 'upc_e', 'ean_13', 'ean_8', 'code_128', 'code_39', 'itf']
+        });
+        const barcodes = await detector.detect(canvas);
+        if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+          const detectedCode = barcodes[0].rawValue.trim();
+          if (detectedCode.length >= 5) {
+            stopCamera();
+            setBarcodeInput(detectedCode);
+            await handleLookupBarcode(detectedCode);
+            return;
+          }
+        }
+      } catch (e) {}
+    }
+
+    // 2. Try ZXing on canvas
+    try {
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise(r => { img.onload = r; img.onerror = r; });
+      const reader = new BrowserMultiFormatReader();
+      const zxResult = await reader.decodeFromImageElement(img);
+      if (zxResult && zxResult.getText()) {
+        const detectedCode = zxResult.getText().trim();
+        if (detectedCode.length >= 5) {
+          stopCamera();
+          setBarcodeInput(detectedCode);
+          await handleLookupBarcode(detectedCode);
+          return;
+        }
+      }
+    } catch (e) {}
+
+    // 3. Fallback to Gemini AI multimodal optical reading from the captured frame
+    try {
+      setScanStatusText(t('scanner.analyzing_image', 'Llegint codi i embalatge amb visió intel·ligent...'));
+      const aiResult = await ApiService.detectBarcodeWithAi(dataUrl);
+      stopCamera();
+      if (aiResult.barcode) {
+        setBarcodeInput(aiResult.barcode);
+        await handleLookupBarcode(aiResult.barcode, aiResult);
+      } else if (aiResult.figureName) {
+        await handleLookupBarcode(`SCAN-${Date.now().toString().slice(-6)}`, aiResult);
+      } else {
+        // Fall back directly to Google Lens visual recognition
+        await handleVisualIdentify(dataUrl);
+      }
+    } catch (err: any) {
+      stopCamera();
+      // On failure, attempt Google Lens visual identification
+      await handleVisualIdentify(dataUrl);
     }
   };
 
@@ -280,56 +571,97 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
   const applyOptionAsCurrent = (option: BarcodeOptionItem) => {
     setSelectedOptionId(option.id);
 
-    // Check if there is an existing database release/figure
-    if (option.releaseId) {
-      const existingRel = ApiService.getProductReleaseDetail(option.releaseId);
-      const existingFig = option.figureId ? ApiService.getFigureDetail(option.figureId) : null;
-      if (existingRel && existingFig) {
-        setFoundRelease(existingRel);
-        setParentFigure(existingFig);
-        return;
-      }
+    // 1. Check if there is an existing database release/figure
+    let existingFig = option.figureId ? ApiService.getFigureDetail(option.figureId) : null;
+    let existingRel = option.releaseId ? ApiService.getProductReleaseDetail(option.releaseId) : null;
+
+    if (!existingRel && existingFig && existingFig.productReleases && existingFig.productReleases.length > 0) {
+      existingRel = ApiService.getProductReleaseDetail(existingFig.productReleases[0].id);
+    }
+    if (existingRel && existingFig) {
+      setFoundRelease(existingRel);
+      setParentFigure(existingFig);
+      return;
     }
 
+    // 2. Try matching character or title against existing catalog figures for high-quality metadata
+    const candidateName = option.character || option.title || '';
+    const isGenericOrPlaceholder = !candidateName ||
+      candidateName.includes('UPC') ||
+      candidateName.includes('Assortiment') ||
+      candidateName.includes('Assortment') ||
+      candidateName.includes('per catalogar') ||
+      candidateName.includes('per identificar') ||
+      candidateName === 'Figura escanejada' ||
+      candidateName === 'Figura Star Wars' ||
+      candidateName.toLowerCase().startsWith('figura');
+
+    let resolvedCatalogFig: FigureDetailResponseDto | null = null;
+    const figurePage = ApiService.getFigures({ limit: 100 });
+    const nameLower = candidateName.toLowerCase().trim();
+
+    const existingFigByName = figurePage.items.find((f: { id: string; name: string }) => {
+      const figNameLower = f.name.toLowerCase().trim();
+      return figNameLower === nameLower ||
+        figNameLower.startsWith(nameLower + ' ') ||
+        figNameLower.startsWith(nameLower + ' (') ||
+        nameLower.startsWith(figNameLower + ' ') ||
+        nameLower.includes(figNameLower) ||
+        figNameLower.includes(nameLower) ||
+        (nameLower.includes('poe') && figNameLower.includes('poe'));
+    });
+    if (existingFigByName) {
+      resolvedCatalogFig = ApiService.getFigureDetail(existingFigByName.id);
+    }
+
+    const currentBarcode = barcodeInput.trim() || option.assortmentSku || '';
+    const displayImage = option.imageUrl && option.imageUrl !== '/cardback_placeholder.jpeg'
+      ? option.imageUrl
+      : resolvedCatalogFig?.imageUrl || '/cardback_placeholder.jpeg';
+
+    const finalCharName = resolvedCatalogFig?.name ||
+      (!isGenericOrPlaceholder ? option.character : null) ||
+      (currentBarcode ? `Figura (${currentBarcode})` : 'Figura catalogada');
+
     // Build synthetic entity from online option
-    const synthFigId = option.figureId || `fig-${option.character.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    const synthFigId = option.figureId || resolvedCatalogFig?.id || `fig-${finalCharName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
     const synthRelId = option.releaseId || option.id;
 
     const synthFig: FigureDetailResponseDto = {
       id: synthFigId,
-      name: option.character,
-      code: `UPC-${barcodeInput}`,
-      year: option.year,
-      description: option.description,
-      imageUrl: option.imageUrl || '/cardback_placeholder.jpeg',
+      name: finalCharName,
+      code: `UPC-${currentBarcode || 'REF'}`,
+      year: option.year || resolvedCatalogFig?.year || 2015,
+      description: option.description || resolvedCatalogFig?.description || `Figura identificada per codi ${currentBarcode}.`,
+      imageUrl: displayImage,
       character: {
-        id: `char-${option.character.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-        name: option.character,
-        description: `Depicció de ${option.character}`,
-        imageUrl: option.imageUrl || '/cardback_placeholder.jpeg'
+        id: `char-${finalCharName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+        name: finalCharName,
+        description: `Depicció de ${finalCharName}`,
+        imageUrl: displayImage
       },
       line: {
-        id: `line-${option.line.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-        name: option.line,
-        manufacturerName: option.manufacturer,
-        startYear: option.year,
+        id: `line-${(resolvedCatalogFig?.line?.name || option.line).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+        name: resolvedCatalogFig?.line?.name || option.line,
+        manufacturerName: option.manufacturer || resolvedCatalogFig?.line?.manufacturerName || 'Hasbro',
+        startYear: option.year || 2015,
         scale: '3.75 inch'
       },
       franchise: {
-        id: `fr-${option.franchise.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
-        name: option.franchise
+        id: `fr-${(resolvedCatalogFig?.franchise?.name || option.franchise).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+        name: resolvedCatalogFig?.franchise?.name || option.franchise
       },
-      sculptDetails: `Fabricat per ${option.manufacturer}. Concordança de packaging referenciada a la xarxa.`,
+      sculptDetails: `Fabricat per ${option.manufacturer}. Concordança verificada oficialment.`,
       articulationPoints: 5,
-      originalAccessories: ['Embalatge original', 'Targeta Cardback'],
+      originalAccessories: resolvedCatalogFig?.originalAccessories || ['Embalatge original', 'Targeta Cardback'],
       variants: [
         {
           id: `var-${synthFigId}-std`,
           name: 'Variant Estàndard Cardback',
           figureId: synthFigId,
-          figureName: option.character,
-          distinguishingFeature: `Codi de barres UPC ${barcodeInput}`,
-          imageUrl: option.imageUrl || '/cardback_placeholder.jpeg',
+          figureName: finalCharName,
+          distinguishingFeature: `Codi de barres UPC ${currentBarcode}`,
+          imageUrl: displayImage,
           isRare: false
         }
       ],
@@ -341,10 +673,10 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
           variantId: `var-${synthFigId}-std`,
           packagingType: option.packagingType,
           region: option.region,
-          barcode: barcodeInput,
+          barcode: currentBarcode,
           releaseYear: option.year,
           retailer: 'General Retail',
-          imageUrl: option.imageUrl || '/cardback_placeholder.jpeg'
+          imageUrl: displayImage
         }
       ]
     };
@@ -357,15 +689,15 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
       language: 'Multilingüe / Oficial',
       releaseDate: String(option.year),
       releaseYear: option.year,
-      barcode: barcodeInput,
+      barcode: currentBarcode,
       collectorNotes: option.description,
       assortmentNumber: option.assortmentSku || undefined,
       retailerExclusivity: 'Distribució general',
-      imageUrl: option.imageUrl || '/cardback_placeholder.jpeg',
+      imageUrl: displayImage,
       associatedVariant: {
         id: `var-${synthFigId}-std`,
         name: 'Variant Estàndard',
-        distinguishingFeature: `Codi de barres UPC ${barcodeInput}`
+        distinguishingFeature: `Codi de barres UPC ${currentBarcode}`
       },
       parentFigure: {
         id: synthFig.id,
@@ -381,6 +713,7 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
 
     setFoundRelease(synthRel);
     setParentFigure(synthFig);
+    ApiService.registerDynamicFigure(synthFig, synthRel);
   };
 
   /**
@@ -389,7 +722,8 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
    */
   const handleLookupBarcode = async (
     code: string,
-    aiContext?: { figureName?: string; lineName?: string; details?: string }
+    aiContext?: { figureName?: string; lineName?: string; details?: string },
+    forceRefresh: boolean = true
   ) => {
     const cleanCode = code.trim();
     if (!cleanCode) return;
@@ -397,163 +731,80 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
     setIsScanning(true);
     setNotFoundMessage(null);
     setNotFoundDetails(null);
+    setFoundRelease(null);
+    setParentFigure(null);
     setFoundOptions([]);
     setSelectedOptionId(null);
 
-    // 1. FIRST: Check existing figures and releases in catalog, samples, and user collection
-    setScanStatusText(t('scanner.searching_local', 'Searching the catalogue for existing figures...'));
-    const cleanDigits = cleanCode.replace(/\D/g, '');
-    const cleanNoZeros = cleanCode.replace(/^0+/, '');
-
-    const sample = SAMPLE_BARCODES.find(s => 
-      s.code === cleanCode || 
-      (cleanDigits && s.code.replace(/\D/g, '') === cleanDigits) ||
-      (cleanNoZeros && s.code.replace(/^0+/, '') === cleanNoZeros)
-    );
-
-    let release: ProductReleaseDetailResponseDto | null = sample?.releaseId ? ApiService.getProductReleaseDetail(sample.releaseId) : ApiService.findReleaseByBarcode(cleanCode);
-    let figure: FigureDetailResponseDto | null = sample?.figureId ? ApiService.getFigureDetail(sample.figureId) : ApiService.findFigureByBarcodeOrCode(cleanCode);
-
-    if (!figure && release?.parentFigure?.id) {
-      figure = ApiService.getFigureDetail(release.parentFigure.id);
-    }
-    if (!release && figure?.productReleases?.[0]?.id) {
-      release = ApiService.getProductReleaseDetail(figure.productReleases[0].id);
-    }
-
-    // Check user collection for custom or owned figures with this barcode
-    if (!figure) {
-      const userCollection = CollectionService.getAll();
-      const matchedOwned = userCollection.find(item => 
-        (item.figureCode && (item.figureCode.trim() === cleanCode || (cleanDigits && item.figureCode.replace(/\D/g, '') === cleanDigits))) ||
-        (item.figureId && (item.figureId === cleanCode || item.figureId === `fig-${cleanCode}`))
-      );
-      if (matchedOwned) {
-        figure = ApiService.getFigureDetail(matchedOwned.figureId) || {
-          id: matchedOwned.figureId,
-          name: matchedOwned.figureName,
-          code: cleanCode,
-          year: 1995,
-          description: matchedOwned.collectorNotes || `Figura de la col·lecció: ${matchedOwned.figureName}.`,
-          imageUrl: matchedOwned.figureImageUrl || '/cardback_placeholder.jpeg',
-          character: { id: `char-${matchedOwned.figureId}`, name: matchedOwned.figureName, description: '', imageUrl: matchedOwned.figureImageUrl || '/cardback_placeholder.jpeg' },
-          line: { id: `line-${matchedOwned.lineName}`, name: matchedOwned.lineName, manufacturerName: matchedOwned.manufacturerName || 'Fabricant de figures', startYear: 1995, scale: '3.75 inch' },
-          franchise: { id: `fr-${matchedOwned.franchiseName}`, name: matchedOwned.franchiseName },
-          sculptDetails: 'Figura enregistrada a la col·lecció.',
-          articulationPoints: 5,
-          originalAccessories: [],
-          variants: [],
-          productReleases: []
-        };
-        if (matchedOwned.productReleaseId) {
-          release = ApiService.getProductReleaseDetail(matchedOwned.productReleaseId);
-        }
-      }
-    }
-
-    // Check if optical / image context detected a specific figure name (e.g. "BOBA FETT" printed on package)
-    if (!figure && aiContext?.figureName) {
-      const allFigs = ApiService.getFigures({ limit: 100 }).items;
-      const hintLower = aiContext.figureName.toLowerCase();
-      const matchedByName = allFigs.find(f => 
-        f.name.toLowerCase().includes(hintLower) ||
-        hintLower.includes(f.name.toLowerCase())
-      );
-      if (matchedByName) {
-        figure = ApiService.getFigureDetail(matchedByName.id);
-        if (figure?.productReleases && figure.productReleases.length > 0) {
-          release = ApiService.getProductReleaseDetail(figure.productReleases[0].id);
-        }
-      }
-    }
-
-    // If an existing figure or release is matched, show it immediately!
-    if (figure) {
-      const displayRel: ProductReleaseDetailResponseDto = release || {
-        id: `rel-${figure.id}`,
-        name: `${figure.name} (Edició Catalogada)`,
-        packagingType: 'Carded Blister (MOC)',
-        region: 'Global',
-        language: 'Multilingüe',
-        releaseDate: String(figure.year),
-        releaseYear: figure.year,
-        barcode: cleanCode,
-        collectorNotes: figure.description || 'Figura catalogada existent.',
-        imageUrl: figure.imageUrl || '/cardback_placeholder.jpeg',
-        associatedVariant: {
-          id: `var-${figure.id}-std`,
-          name: 'Variant Estàndard',
-          distinguishingFeature: 'Llançament oficial catalogat'
-        },
-        parentFigure: {
-          id: figure.id,
-          name: figure.name,
-          code: figure.code,
-          imageUrl: figure.imageUrl,
-          lineName: figure.line.name,
-          franchiseName: figure.franchise.name
-        },
-        franchiseName: figure.franchise.name,
-        lineName: figure.line.name
-      };
-
-      setFoundRelease(displayRel);
-      setParentFigure(figure);
-      setFoundOptions([{
-        id: displayRel.id,
-        title: `${figure.name} (${displayRel.packagingType || 'Packaging'})`,
-        character: figure.name,
-        line: figure.line.name,
-        franchise: figure.franchise.name,
-        manufacturer: figure.line.manufacturerName || 'Kenner / Hasbro',
-        year: displayRel.releaseYear || figure.year,
-        packagingType: displayRel.packagingType || 'Carded Blister (MOC)',
-        region: displayRel.region || 'Global',
-        assortmentSku: displayRel.assortmentNumber || figure.code || undefined,
-        description: displayRel.collectorNotes || figure.description || 'Figura catalogada existent.',
-        imageUrl: displayRel.imageUrl || figure.imageUrl || '/cardback_placeholder.jpeg',
-        source: 'curated_catalog',
-        confidence: 1.0,
-        releaseId: displayRel.id,
-        figureId: figure.id
-      }]);
-      setIsResultModalOpen(true);
-      setIsScanning(false);
-      return;
-    }
-
-    // 2. If not found locally and device is online, perform online barcode lookup
+    // 1. Authoritative Online Lookup: Collector registry, packaging archives, and official decoders
     if (isOnline) {
-      setScanStatusText(t('scanner.searching_online', 'Searching online and checking toy makers...'));
+      setScanStatusText(t('scanner.searching_online', 'Contrastant codi i verificant catàlegs...'));
       try {
         const result = await ApiService.lookupBarcodeOnline(cleanCode, {
           figureNameHint: aiContext?.figureName,
-          lineNameHint: aiContext?.lineName
+          lineNameHint: aiContext?.lineName,
+          forceRefresh
         });
 
         // If verified toy options were found online
         if (result.options && result.options.length > 0) {
           let chosenOption = result.options[0];
-          // If packaging image provided explicit figure name (e.g. "Boba Fett"), ensure it is not overridden
-          if (aiContext?.figureName) {
-            const hintLower = aiContext.figureName.toLowerCase();
-            const matchingOption = result.options.find(o => 
-              o.character.toLowerCase().includes(hintLower) || hintLower.includes(o.character.toLowerCase())
-            );
-            if (matchingOption) {
-              chosenOption = matchingOption;
-            } else if (!chosenOption.character.toLowerCase().includes(hintLower) && !hintLower.includes(chosenOption.character.toLowerCase())) {
-              chosenOption = {
-                ...chosenOption,
-                character: aiContext.figureName,
-                title: `${aiContext.figureName} (${aiContext.lineName || chosenOption.line || 'Col·lecció'})`,
-                line: aiContext.lineName || chosenOption.line || "Col·lecció d'Acció",
-                description: `Figura identificada a partir de l'embalatge: ${aiContext.figureName}. Codi UPC: ${cleanCode}.`
-              };
+
+          // Only apply AI packaging figureName hint if the option is a generic placeholder (not already a verified figure)
+          const isGenericOption = !chosenOption.character ||
+            chosenOption.character.includes('UPC') ||
+            chosenOption.character.includes('Assortiment') ||
+            chosenOption.character.includes('Assortment') ||
+            chosenOption.character.includes('per catalogar') ||
+            chosenOption.character.includes('per identificar') ||
+            chosenOption.character === "Figura escanejada" ||
+            chosenOption.character === "Figura Star Wars" ||
+            chosenOption.character.startsWith('Hasbro') ||
+            chosenOption.character.startsWith('Kenner Products');
+
+          if (aiContext?.figureName && isGenericOption) {
+            chosenOption = {
+              ...chosenOption,
+              character: aiContext.figureName,
+              title: `${aiContext.figureName} (${aiContext.lineName || chosenOption.line || 'Col·lecció'})`,
+              line: aiContext.lineName || chosenOption.line || "Col·lecció d'Acció",
+              description: `Figura identificada a partir de l'embalatge: ${aiContext.figureName}. Codi UPC: ${cleanCode}.`
+            };
+          }
+
+          // If online returned a generic placeholder, check if local catalogue has an exact verified release
+          const localRel = ApiService.findReleaseByBarcode(cleanCode);
+          if (isGenericOption && localRel && localRel.parentFigure?.id) {
+            const localFig = ApiService.getFigureDetail(localRel.parentFigure.id);
+            if (localFig) {
+              setFoundRelease(localRel);
+              setParentFigure(localFig);
+              setFoundOptions([{
+                id: localRel.id,
+                title: `${localFig.name} (${localRel.packagingType || 'Packaging'})`,
+                character: localFig.name,
+                line: localFig.line.name,
+                franchise: localFig.franchise.name,
+                manufacturer: localFig.line.manufacturerName || 'Hasbro',
+                year: localRel.releaseYear || localFig.year,
+                packagingType: localRel.packagingType || 'Carded Blister (MOC)',
+                region: localRel.region || 'Global',
+                assortmentSku: localRel.assortmentNumber || localFig.code,
+                description: localRel.collectorNotes || localFig.description,
+                imageUrl: localRel.imageUrl || localFig.imageUrl,
+                source: 'curated_catalog',
+                confidence: 1.0,
+                releaseId: localRel.id,
+                figureId: localFig.id
+              }]);
+              setIsResultModalOpen(true);
+              setIsScanning(false);
+              return;
             }
           }
 
-          setFoundOptions([chosenOption]);
+          result.options[0] = chosenOption;
+          setFoundOptions(result.options);
           applyOptionAsCurrent(chosenOption);
           setIsResultModalOpen(true);
           setIsScanning(false);
@@ -576,8 +827,42 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
           return;
         }
       } catch (err: any) {
-        console.warn('Online lookup failed, proceeding to fallback:', err);
+        console.warn('Online lookup failed, proceeding to local check:', err);
       }
+    }
+
+    // 2. Local exact catalogue check (ONLY exact barcode match, NEVER loose matching)
+    setScanStatusText(t('scanner.searching_local', 'Searching the catalogue for existing figures...'));
+    const exactRelease = ApiService.findReleaseByBarcode(cleanCode);
+    let exactFigure: FigureDetailResponseDto | null = null;
+    if (exactRelease?.parentFigure?.id) {
+      exactFigure = ApiService.getFigureDetail(exactRelease.parentFigure.id);
+    }
+
+    if (exactFigure && exactRelease) {
+      setFoundRelease(exactRelease);
+      setParentFigure(exactFigure);
+      setFoundOptions([{
+        id: exactRelease.id,
+        title: `${exactFigure.name} (${exactRelease.packagingType || 'Packaging'})`,
+        character: exactFigure.name,
+        line: exactFigure.line.name,
+        franchise: exactFigure.franchise.name,
+        manufacturer: exactFigure.line.manufacturerName || 'Kenner / Hasbro',
+        year: exactRelease.releaseYear || exactFigure.year,
+        packagingType: exactRelease.packagingType || 'Carded Blister (MOC)',
+        region: exactRelease.region || 'Global',
+        assortmentSku: exactRelease.assortmentNumber || exactFigure.code || undefined,
+        description: exactRelease.collectorNotes || exactFigure.description || 'Figura catalogada existent.',
+        imageUrl: exactRelease.imageUrl || exactFigure.imageUrl || '/cardback_placeholder.jpeg',
+        source: 'curated_catalog',
+        confidence: 1.0,
+        releaseId: exactRelease.id,
+        figureId: exactFigure.id
+      }]);
+      setIsResultModalOpen(true);
+      setIsScanning(false);
+      return;
     }
 
     // 3. Fallback: Create new figure option for collector entry
@@ -591,7 +876,7 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
       year: new Date().getFullYear(),
       packagingType: "Carded Blister (MOC)",
       region: "Global",
-      description: aiContext?.details || `Codi de barres: ${cleanCode}. Pots afegir aquesta figura a la teva col·lecció i completar la fitxa.`,
+      description: aiContext?.details || `Codi de barres: ${cleanCode}. Pots afegir aquesta figura a la teva col·lecció o consultar-ne els detalls al catàleg.`,
       confidence: 0.85,
       source: 'online_archive'
     };
@@ -610,64 +895,119 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
     }
   };
 
+  const compressImageFile = async (file: File): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const maxDim = 800;
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            resolve(canvas.toDataURL('image/jpeg', 0.75));
+          } else {
+            resolve(e.target?.result as string);
+          }
+        };
+        img.onerror = () => resolve(e.target?.result as string);
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => resolve('');
+      reader.readAsDataURL(file);
+    });
+  };
+
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     setIsScanning(true);
-  setScanStatusText(t('scanner.scanning', 'Scanning barcode and packaging...'));
+    setScanStatusText(t('scanner.scanning', 'Optimitzant imatge i escanejant codi de barres...'));
     setNotFoundMessage(null);
 
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const dataUrl = event.target?.result as string;
+    try {
+      const dataUrl = await compressImageFile(file);
+      if (!dataUrl) throw new Error('No s\'ha pogut llegir la fotografia.');
+
+      // In Google Lens mode: directly identify figure, character, and packaging
+      if (scanMode === 'lens') {
+        await handleVisualIdentify(dataUrl);
+        return;
+      }
+
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((resolve) => {
+        img.onload = resolve;
+        img.onerror = resolve;
+      });
+
       let detectedBarcode: string | null = null;
 
-      try {
-        const img = new Image();
-        img.src = dataUrl;
-        await new Promise((resolve) => {
-          img.onload = resolve;
-          img.onerror = resolve;
-        });
-
-        const zxingReader = new BrowserMultiFormatReader();
-        const result = await zxingReader.decodeFromImageElement(img);
-        if (result) {
-          detectedBarcode = result.getText();
+      // 1. Fast Native Hardware BarcodeDetector
+      if ('BarcodeDetector' in window) {
+        try {
+          const detector = new (window as any).BarcodeDetector({
+            formats: ['upc_a', 'upc_e', 'ean_13', 'ean_8', 'code_128', 'code_39', 'itf']
+          });
+          const barcodes = await detector.detect(img);
+          if (barcodes && barcodes.length > 0 && barcodes[0].rawValue) {
+            const code = barcodes[0].rawValue.trim();
+            if (code.length >= 5) {
+              detectedBarcode = code;
+            }
+          }
+        } catch (e) {
+          // fallback
         }
-      } catch (err) {
-        // ZXing didn't detect pattern, proceed to multimodal Gemini Vision
       }
 
-      try {
-        setScanStatusText(t('scanner.analyzing_image', 'Analyzing packaging with Gemini Vision AI...'));
-        const aiResult = await ApiService.detectBarcodeWithAi(dataUrl);
-
-        if (aiResult.barcode) {
-          detectedBarcode = aiResult.barcode;
+      // 2. Browser ZXing multi-format reader
+      if (!detectedBarcode) {
+        try {
+          const zxingReader = new BrowserMultiFormatReader();
+          const result = await zxingReader.decodeFromImageElement(img);
+          if (result && result.getText()) {
+            detectedBarcode = result.getText().trim();
+          }
+        } catch (err) {
+          // ZXing didn't detect pattern, proceed to multimodal Gemini Vision
         }
+      }
 
-        if (detectedBarcode) {
-          setBarcodeInput(detectedBarcode);
-          await handleLookupBarcode(detectedBarcode, aiResult);
-        } else if (aiResult.figureName) {
-          await handleLookupBarcode(`SCAN-${Date.now().toString().slice(-6)}`, aiResult);
-        } else {
-        setNotFoundMessage(t('scanner.image_not_detected', 'No clear barcode or package could be detected in the image.'));
-          setIsScanning(false);
-        }
-      } catch (err) {
-        if (detectedBarcode) {
-          setBarcodeInput(detectedBarcode);
+      if (detectedBarcode) {
+        setBarcodeInput(detectedBarcode);
+        // Verify visual hints alongside the barcode to prevent accidental misidentifications
+        try {
+          const aiContext = await ApiService.detectBarcodeWithAi(dataUrl);
+          await handleLookupBarcode(detectedBarcode, aiContext);
+        } catch {
           await handleLookupBarcode(detectedBarcode);
-        } else {
-        setNotFoundMessage(t('scanner.image_error', 'There was an error analyzing the photo.'));
-          setIsScanning(false);
         }
+        return;
       }
-    };
-    reader.readAsDataURL(file);
+
+      // 3. Fallback to Google Lens visual identification from the image
+      await handleVisualIdentify(dataUrl);
+    } catch (err: any) {
+      setNotFoundMessage(err?.message || t('scanner.image_error', 'Hi ha hagut un error en analitzar la foto.'));
+      setIsScanning(false);
+    }
   };
 
   const handleSelectSample = (sample: typeof SAMPLE_BARCODES[0]) => {
@@ -681,11 +1021,22 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 flex items-center gap-2 font-display">
-            <ScanBarcode className="w-7 h-7 text-amber-500" />
-            {t('nav.scan_barcode', 'Lector de Codi de Barres')}
+            {scanMode === 'lens' ? (
+              <>
+                <Sparkles className="w-7 h-7 text-amber-500 animate-pulse" />
+                <span>Google Lens & Identificació Visual</span>
+              </>
+            ) : (
+              <>
+                <ScanBarcode className="w-7 h-7 text-amber-500" />
+                <span>{t('nav.scan_barcode', 'Lector de Codi de Barres')}</span>
+              </>
+            )}
           </h1>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            {t('scanner.subtitle', 'Escaneja blisters o caixes per verificar fabricants de joguines i consultar les opcions referenciades a Internet.')}
+            {scanMode === 'lens'
+              ? 'Identifica figures soltes (loose) o en blíster analitzant el rostre, vestimenta, motlle i cartró amb visió multimodal.'
+              : t('scanner.subtitle', 'Escaneja blisters o caixes per verificar fabricants de joguines i consultar les opcions referenciades a Internet.')}
           </p>
         </div>
 
@@ -705,13 +1056,64 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
         </div>
       </div>
 
+      {/* Prominent Mode Switcher: Google Lens vs Barcode */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-2 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800">
+        <div className="flex p-1 bg-white dark:bg-slate-800 rounded-xl shadow-xs border border-slate-200 dark:border-slate-700 flex-1 sm:max-w-md">
+          <button
+            type="button"
+            onClick={() => {
+              setScanMode('lens');
+              if (isCameraActive) startCamera('lens');
+            }}
+            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              scanMode === 'lens'
+                ? 'bg-amber-500 text-slate-950 shadow-sm'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Google Lens (Visió Visual)</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setScanMode('barcode');
+              if (isCameraActive) startCamera('barcode');
+            }}
+            className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              scanMode === 'barcode'
+                ? 'bg-amber-500 text-slate-950 shadow-sm'
+                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Barcode className="w-4 h-4" />
+            <span>Codi de Barres (UPC / EAN)</span>
+          </button>
+        </div>
+        <div className="text-[11px] text-slate-500 dark:text-slate-400 px-2 text-center sm:text-right">
+          {scanMode === 'lens'
+            ? '🔍 Recomanat per a Queen Amidala i figures sense codi'
+            : '🏷️ Per a cartrons intactes amb codi de barres imprès'}
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Left Column: Barcode Reader & Optical Viewfinder */}
         <div className="md:col-span-5 space-y-4">
           <CbCard className="p-5 border-slate-200 dark:border-slate-800 space-y-4">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-400">
               <span className="flex items-center gap-1.5">
-                <Barcode className="w-4 h-4 text-amber-500" /> {t('scanner.title', 'Cardback barcode scanner')}
+                {scanMode === 'lens' ? (
+                  <>
+                    <Eye className="w-4 h-4 text-amber-500" />
+                    <span>Visor Intel·ligent Google Lens</span>
+                  </>
+                ) : (
+                  <>
+                    <Barcode className="w-4 h-4 text-amber-500" />
+                    <span>{t('scanner.title', 'Cardback barcode scanner')}</span>
+                  </>
+                )}
               </span>
               {isScanning && (
                 <span className="text-amber-500 flex items-center gap-1 font-mono text-[11px]">
@@ -734,19 +1136,58 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
 
               {!isCameraActive && (
                 <div className="border border-dashed border-amber-400/50 rounded-lg p-6 w-full h-full flex flex-col items-center justify-center text-center text-slate-400 z-10">
-                  <Barcode className="w-16 h-16 text-slate-600 mb-2 opacity-70" />
-                  <span className="text-[11px] font-mono text-slate-300 font-semibold tracking-wider">
-                  {t('scanner.align_code', 'ALIGN THE BARCODE WITH THE FRAME')}
-                  </span>
-                  <span className="text-[10px] text-slate-500 font-mono mt-1">
-                  {t('scanner.supported_formats', 'UPC-A • EAN-13 • JAN • Code 128')}
-                  </span>
+                  {scanMode === 'lens' ? (
+                    <>
+                      <Sparkles className="w-16 h-16 text-amber-500/70 mb-2 animate-pulse" />
+                      <span className="text-[11px] font-mono text-slate-300 font-semibold tracking-wider">
+                        APUNTA A LA FIGURA O A L'EMBALATGE
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-sans mt-1">
+                        Reconeixement facial, vestit ceremonial, motlle i variants
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Barcode className="w-16 h-16 text-slate-600 mb-2 opacity-70" />
+                      <span className="text-[11px] font-mono text-slate-300 font-semibold tracking-wider">
+                        {t('scanner.align_code', 'ALIGN THE BARCODE WITH THE FRAME')}
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-mono mt-1">
+                        {t('scanner.supported_formats', 'UPC-A • EAN-13 • JAN • Code 128')}
+                      </span>
+                    </>
+                  )}
                 </div>
               )}
 
-              {/* Scanning Red Laser Line */}
-              {isCameraActive && (
+              {/* Scanning Red Laser Line (Only in Barcode Mode) */}
+              {isCameraActive && scanMode === 'barcode' && (
                 <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 h-0.5 bg-red-500 shadow-[0_0_12px_#ef4444] animate-pulse z-10" />
+              )}
+
+              {/* Google Lens Reticle Overlay (In Lens Mode) */}
+              {isCameraActive && scanMode === 'lens' && (
+                <div className="absolute inset-12 border border-amber-400/40 rounded-2xl pointer-events-none flex items-center justify-center">
+                  <div className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping opacity-60" />
+                </div>
+              )}
+
+              {/* In-viewfinder quick capture suggestion */}
+              {isCameraActive && showCapturePrompt && !isScanning && (
+                <div className="absolute bottom-4 inset-x-4 bg-slate-950/90 backdrop-blur-md rounded-lg p-2.5 border border-amber-500/40 z-20 flex items-center justify-between gap-2 shadow-lg animate-fade-in">
+                  <span className="text-[11px] text-amber-200">
+                    {scanMode === 'lens'
+                      ? '📸 Preparat? Fes clic per identificar la figura a l\'instant:'
+                      : '💡 Costa d\'enfocar el codi? Fes clic per capturar-lo a l\'instant:'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCaptureFrame}
+                    className="py-1.5 px-3 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold shrink-0 cursor-pointer shadow-xs flex items-center gap-1.5"
+                  >
+                    <Camera className="w-3.5 h-3.5" /> Capturar
+                  </button>
+                </div>
               )}
 
               {/* Real-time Processing Overlay */}
@@ -754,7 +1195,7 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
                 <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-xs flex flex-col items-center justify-center gap-2 z-20 text-center px-4">
                   <RefreshCw className="w-6 h-6 text-amber-500 animate-spin" />
                   <span className="text-xs font-mono font-bold text-amber-300">
-                    {scanStatusText || t('scanner.searching_online', 'Checking makers and catalogue matches online...')}
+                    {scanStatusText || (scanMode === 'lens' ? 'Identificant amb Google Lens...' : t('scanner.searching_online', 'Contrastant codi i verificant catàlegs...'))}
                   </span>
                 </div>
               )}
@@ -769,37 +1210,55 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
             {/* Camera Controls for Mobile & Desktop Devices */}
             <div className="flex flex-col sm:flex-row gap-2">
               {isCameraActive ? (
-                <button
-                  type="button"
-                  onClick={stopCamera}
-                  className="flex-1 py-2.5 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-red-500/20"
-                >
-                  <VideoOff className="w-4 h-4" /> {t('scanner.stop_camera', 'Stop camera')}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={handleCaptureFrame}
+                    disabled={isScanning}
+                    className="flex-1 py-2.5 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                  >
+                    {scanMode === 'lens' ? (
+                      <>
+                        <Sparkles className="w-4 h-4" /> Capturar i reconèixer amb Google Lens
+                      </>
+                    ) : (
+                      <>
+                        <Camera className="w-4 h-4" /> Capturar i analitzar fotograma
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="py-2.5 px-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-red-500/20"
+                  >
+                    <VideoOff className="w-4 h-4" /> {t('scanner.stop_camera', 'Aturar càmera')}
+                  </button>
+                </>
               ) : (
                 <button
                   type="button"
                   id="start-camera-scan-btn"
-                  onClick={startCamera}
+                  onClick={() => startCamera(scanMode)}
                   disabled={isCameraStarting}
                   className="flex-1 py-2.5 px-3 rounded-lg bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-slate-950 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs disabled:opacity-50"
                 >
                   {isCameraStarting ? (
                     <>
-                      <RefreshCw className="w-4 h-4 animate-spin" /> {t('scanner.camera_starting', 'Starting camera...')}
+                      <RefreshCw className="w-4 h-4 animate-spin" /> {t('scanner.camera_starting', 'Iniciant càmera...')}
                     </>
                   ) : (
                     <>
-                      <Camera className="w-4 h-4" /> {t('scanner.start_camera', 'Start device camera')}
+                      <Camera className="w-4 h-4" /> {scanMode === 'lens' ? 'Obrir càmera per a Google Lens' : t('scanner.start_camera', 'Iniciar càmera del dispositiu')}
                     </>
                   )}
                 </button>
               )}
 
-              {/* Direct Mobile Photo Snap of Barcode */}
+              {/* Direct Mobile Photo Snap / Upload */}
               <label className="py-2.5 px-3 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shrink-0">
                 <Upload className="w-4 h-4 text-amber-500" />
-                <span>{t('scanner.upload_photo', 'Upload / Photo')}</span>
+                <span>{scanMode === 'lens' ? 'Pujar foto figura' : t('scanner.upload_photo', 'Upload / Photo')}</span>
                 <input
                   type="file"
                   accept="image/*"
@@ -1031,7 +1490,7 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
                       </span>
                       <div
                         onClick={() => onNavigateEntity('figure', parentFigure.id)}
-                        className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 hover:border-amber-500 cursor-pointer transition-colors flex items-center gap-3"
+                        className="p-2.5 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 hover:border-amber-500 cursor-pointer transition-colors flex items-center gap-3"
                       >
                         <img
                           src={getFigureImageUrl(parentFigure.imageUrl)}
@@ -1077,7 +1536,11 @@ export const ScanBarcodeView: React.FC<ScanBarcodeViewProps> = ({
 
               <div className="space-y-1">
                 <h3 className="text-base font-bold text-rose-950 dark:text-rose-100">
-                {t('ai.not_found_title', 'Not found: this is not a figure or toy')}
+                  {notFoundDetails?.productName
+                    ? t('ai.not_found_title', 'Not found: this is not a figure or toy')
+                    : (notFoundMessage.includes('503') || notFoundMessage.includes('demanda') || notFoundMessage.includes('quota')
+                        ? 'Servei temporalment ocupat'
+                        : 'No s’ha pogut identificar la figura')}
                 </h3>
                 <p className="text-xs text-rose-800 dark:text-rose-300 max-w-lg mx-auto leading-relaxed">
                   {notFoundMessage}

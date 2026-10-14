@@ -271,6 +271,30 @@ export const CHARACTERS: CharacterDetailResponseDto[] = [
     galleryUrls: [
       'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=800&auto=format&fit=crop&q=80'
     ]
+  },
+  {
+    id: 'char-poe-dameron',
+    name: 'Poe Dameron',
+    franchiseId: 'fran-star-wars',
+    franchiseName: 'Star Wars',
+    species: 'Human',
+    homeworld: 'Yavin 4',
+    affiliation: 'Resistance / Starfighter Corps',
+    description: 'Daring commander and ace X-wing starfighter pilot of the Resistance, leader of Black Squadron in Star Wars: The Force Awakens.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    firstLoreAppearance: 'Star Wars: Episode VII - The Force Awakens (2015)',
+    firstFigureAppearance: {
+      year: 2015,
+      figureName: 'Poe Dameron (Resistance Pilot)',
+      lineName: 'Star Wars: The Force Awakens',
+      figureId: 'fig-sw-poe-dameron-tfa'
+    },
+    appearancesAcrossLines: [],
+    totalFiguresCount: 1,
+    variantsCount: 1,
+    galleryUrls: [
+      'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80'
+    ]
   }
 ];
 
@@ -535,6 +559,24 @@ export const LINES: LineDetailResponseDto[] = [
     description: 'Hasbro figures for the adventurous coming-of-age Star Wars saga starring Jude Law as Jod Na Nawood.',
     collectorNotes: 'Newest era additions with retro adventure styling.',
     totalFiguresCount: 0,
+    figures: []
+  },
+  {
+    id: 'line-sw-tfa',
+    name: 'Star Wars: The Force Awakens (2015–2016)',
+    logoUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=400&auto=format&fit=crop&q=80',
+    representativeImageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=1000&auto=format&fit=crop&q=80',
+    franchiseId: 'fran-star-wars',
+    franchiseName: 'Star Wars',
+    manufacturerId: 'mfr-hasbro',
+    manufacturerName: 'Hasbro',
+    startYear: 2015,
+    endYear: 2016,
+    isActive: false,
+    scale: '3.75 inch',
+    description: 'The Hasbro relaunch line for Star Wars: The Force Awakens, featuring 3.75" basic figures with the Build-A-Weapon component packaging.',
+    collectorNotes: 'Packaging showcases Kylo Ren header artwork, 5-point articulation figures, and European multilingual blister cards with Build-A-Weapon pack-ins.',
+    totalFiguresCount: 1,
     figures: []
   },
   {
@@ -838,6 +880,126 @@ export const FIGURES: FigureDetailResponseDto[] = [
     originalAccessories: ['Combat Deck Trailer', 'Roller (Blue or Gray)', 'Laser Blaster', 'Gas Hose & Nozzle', 'Missiles (x4)'],
     variants: [],
     productReleases: []
+  },
+  {
+    id: 'fig-sw-poe-dameron-tfa',
+    name: 'Poe Dameron (Resistance Pilot)',
+    code: 'B3449',
+    year: 2015,
+    description: 'Figura oficial Hasbro de 3,75 polzades de Poe Dameron (Resistance Pilot) de Star Wars: The Force Awakens. Inclou casc de vol detallat extraïble, pistola blàster Glie-44 i accessori Build-A-Weapon combinable. Codi UPC: 630509345403 / EAN: 5010994917456.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    character: {
+      id: 'char-poe-dameron',
+      name: 'Poe Dameron',
+      description: 'Daring Resistance starfighter pilot and squadron leader.',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80'
+    },
+    line: {
+      id: 'line-sw-tfa',
+      name: 'Star Wars: The Force Awakens (2015–2016)',
+      manufacturerName: 'Hasbro',
+      startYear: 2015,
+      scale: '3.75 inch'
+    },
+    franchise: {
+      id: 'fran-star-wars',
+      name: 'Star Wars'
+    },
+    sculptDetails: 'Hasbro 3.75" 5POA sculpt with removable pilot flight helmet and Glie-44 blaster pistol holster.',
+    articulationPoints: 5,
+    originalAccessories: ['Casc de vol de la Resistència extraïble', 'Pistola blàster Glie-44', 'Component combinable Build-A-Weapon'],
+    variants: [],
+    productReleases: []
+  },
+  {
+    id: 'fig-sw-queen-amidala-naboo',
+    name: 'Queen Amidala (Naboo)',
+    code: 'EP1-84095',
+    year: 1999,
+    description: 'Figura oficial Hasbro de 1999 de Star Wars Episodi I: L\'Amenaça Fantasma. Representa la Reina Amidala amb el vestit cerimonial vermell reial de Naboo, pentinat tradicional i xip interactiu CommTech. Codi UPC: 076930840955 / 076281840789.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    character: {
+      id: 'char-queen-amidala',
+      name: 'Queen Amidala',
+      description: 'Monarca sobirana electa del planeta Naboo i líder política galàctica.',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80'
+    },
+    line: {
+      id: 'line-sw-ep1',
+      name: 'Episode I: The Phantom Menace (1999)',
+      manufacturerName: 'Hasbro',
+      startYear: 1999,
+      scale: '3.75 inch'
+    },
+    franchise: {
+      id: 'fran-star-wars',
+      name: 'Star Wars'
+    },
+    sculptDetails: 'Escultura oficial Hasbro 1999 de 3,75" amb vestit vermell reial ceremonial de Naboo, maquillatge blanc imperial i xip CommTech.',
+    articulationPoints: 5,
+    originalAccessories: ['Xip de veu interactiu CommTech', 'Pistola blàster de Naboo'],
+    variants: [],
+    productReleases: []
+  },
+  {
+    id: 'fig-sw-queen-amidala-coruscant',
+    name: 'Queen Amidala (Coruscant Senate)',
+    code: 'EP1-84115',
+    year: 1999,
+    description: 'Figura oficial Hasbro 1999 de la Reina Amidala amb el vestit cerimonial fosc del Senat Galàctic a Coruscant i tocat imperial amb xip CommTech. Codi UPC: 076930841150.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    character: {
+      id: 'char-queen-amidala',
+      name: 'Queen Amidala',
+      description: 'Monarca de Naboo durant la seva intervenció decisiva al Senat de la República.',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80'
+    },
+    line: {
+      id: 'line-sw-ep1',
+      name: 'Episode I: The Phantom Menace (1999)',
+      manufacturerName: 'Hasbro',
+      startYear: 1999,
+      scale: '3.75 inch'
+    },
+    franchise: {
+      id: 'fran-star-wars',
+      name: 'Star Wars'
+    },
+    sculptDetails: 'Túnica senatorial elaborada amb capa imperial i xip CommTech.',
+    articulationPoints: 5,
+    originalAccessories: ['Xip de veu interactiu CommTech'],
+    variants: [],
+    productReleases: []
+  },
+  {
+    id: 'fig-sw-queen-amidala-theed',
+    name: 'Queen Amidala (Battle of Theed Invasion)',
+    code: 'EP1-84135',
+    year: 1999,
+    description: 'Figura oficial Hasbro Star Wars Episodi I de la Reina Amidala amb vestit de batalla bordeus i blàster d\'ascensió durant la reconquesta de Theed. Codi UPC: 076930841358.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    character: {
+      id: 'char-queen-amidala',
+      name: 'Queen Amidala',
+      description: 'La Reina Amidala liderant la resistència armada per alliberar el Palau de Theed.',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80'
+    },
+    line: {
+      id: 'line-sw-ep1',
+      name: 'Episode I: The Phantom Menace (1999)',
+      manufacturerName: 'Hasbro',
+      startYear: 1999,
+      scale: '3.75 inch'
+    },
+    franchise: {
+      id: 'fran-star-wars',
+      name: 'Star Wars'
+    },
+    sculptDetails: 'Uniforme de combat de Naboo amb botes altes, pistolera i llançador blàster d\'ascensió.',
+    articulationPoints: 6,
+    originalAccessories: ['Pistola blàster d\'ascensió', 'Xip de veu interactiu CommTech'],
+    variants: [],
+    productReleases: []
   }
 ];
 
@@ -975,6 +1137,28 @@ export const VARIANTS: VariantDetailResponseDto[] = [
     accessoriesSpecific: ['Power Sword (Soft Plastic)', 'Battle Axe', 'Shield with soft clips'],
     historicalDistributionNotes: 'Found exclusively on early 1982 8-Back cardbacks stamped "Taiwan".',
     firstAppearanceContext: '1982 Initial Retail Waves.',
+    photographs: [],
+    releasesContainingVariant: []
+  },
+  {
+    id: 'var-sw-poe-dameron-std',
+    name: 'Variant Estàndard Cardback',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    distinguishingFeature: 'Uniforme de vol taronja i blanc de la Resistència amb casc extraïble i accessori Build-A-Weapon.',
+    whyItMatters: 'Llançament inaugural de la línia The Force Awakens (Force Friday 2015), amb el sistema d\'accessoris combinables Build-A-Weapon.',
+    identificationGuide: 'Targeta blister amb motiu de Kylo Ren, codi B3449/B3445 ASST. i logotip Star Wars: The Force Awakens.',
+    rarityLevel: 'Common',
+    associatedFigure: {
+      id: 'fig-sw-poe-dameron-tfa',
+      name: 'Poe Dameron (Resistance Pilot)',
+      code: 'B3449',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Star Wars: The Force Awakens (2015–2016)',
+      franchiseName: 'Star Wars'
+    },
+    accessoriesSpecific: ['Casc de vol de la Resistència', 'Pistola blàster Glie-44', 'Component combinable Build-A-Weapon'],
+    historicalDistributionNotes: 'Distribuït a nivell mundial per Hasbro el setembre de 2015 a les cadenes massives de joguines.',
+    firstAppearanceContext: 'Force Friday 2015.',
     photographs: [],
     releasesContainingVariant: []
   }
@@ -1127,6 +1311,354 @@ export const PRODUCT_RELEASES: ProductReleaseDetailResponseDto[] = [
     },
     franchiseName: 'Masters of the Universe',
     lineName: 'Masters of the Universe Vintage (1982–1988)'
+  },
+  {
+    id: 'rel-sw-poe-dameron-tfa-b3449',
+    name: 'Poe Dameron (Resistance Pilot) — Build-A-Weapon Blister Card (UPC)',
+    packagingType: 'Carded Blister (Build-A-Weapon)',
+    region: 'North America / Global',
+    language: 'Multilingual (EN, FR, ES)',
+    retailerExclusivity: 'General Retail',
+    releaseDate: '2015-09-04',
+    releaseYear: 2015,
+    barcode: '630509345403',
+    assortmentNumber: 'B3449 / B3445 ASST.',
+    collectorNotes: 'Edició original de llançament The Force Awakens (Force Friday 2015). Inclou casc de pilot extraïble, pistola blàster Glie-44 i accessori Build-A-Weapon combinable. Codi UPC: 630509345403.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    associatedVariant: {
+      id: 'var-sw-poe-dameron-std',
+      name: 'Variant Estàndard Cardback',
+      distinguishingFeature: 'Uniforme de vol de la Resistència amb casc extraïble i accessori Build-A-Weapon'
+    },
+    parentFigure: {
+      id: 'fig-sw-poe-dameron-tfa',
+      name: 'Poe Dameron (Resistance Pilot)',
+      code: 'B3449',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Star Wars: The Force Awakens (2015–2016)',
+      franchiseName: 'Star Wars'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Star Wars: The Force Awakens (2015–2016)'
+  },
+  {
+    id: 'rel-sw-poe-dameron-tfa-b3449-eu',
+    name: 'Poe Dameron (Resistance Pilot) — Blister Europeu (EAN-13)',
+    packagingType: 'Carded Blister (Build-A-Weapon)',
+    region: 'Europe / Spain',
+    language: 'Multilingual European (ES, CA, FR, DE)',
+    retailerExclusivity: 'General Retail',
+    releaseDate: '2015-09-04',
+    releaseYear: 2015,
+    barcode: '5010994917456',
+    assortmentNumber: 'B3449 / B3445 ASST.',
+    collectorNotes: 'Targeta blister distribuïda per Hasbro a Europa i Espanya amb codi de barres EAN-13 5010994917456.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    associatedVariant: {
+      id: 'var-sw-poe-dameron-std',
+      name: 'Variant Estàndard Cardback',
+      distinguishingFeature: 'Uniforme de vol de la Resistència amb casc extraïble i accessori Build-A-Weapon'
+    },
+    parentFigure: {
+      id: 'fig-sw-poe-dameron-tfa',
+      name: 'Poe Dameron (Resistance Pilot)',
+      code: 'B3449',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Star Wars: The Force Awakens (2015–2016)',
+      franchiseName: 'Star Wars'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Star Wars: The Force Awakens (2015–2016)'
+  },
+  {
+    id: 'rel-sw-poe-dameron-tfa-b3449-ean',
+    name: 'Poe Dameron (Resistance Pilot) — EAN Internacional',
+    packagingType: 'Carded Blister (Build-A-Weapon)',
+    region: 'Global / International',
+    language: 'Multilingual / Official',
+    retailerExclusivity: 'General Retail',
+    releaseDate: '2015-09-04',
+    releaseYear: 2015,
+    barcode: '0630509345403',
+    assortmentNumber: 'B3449 / B3445 ASST.',
+    collectorNotes: 'Codi de barres EAN-13 de 13 xifres amb zero inicial.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    associatedVariant: {
+      id: 'var-sw-poe-dameron-std',
+      name: 'Variant Estàndard Cardback',
+      distinguishingFeature: 'Uniforme de vol de la Resistència amb casc extraïble i accessori Build-A-Weapon'
+    },
+    parentFigure: {
+      id: 'fig-sw-poe-dameron-tfa',
+      name: 'Poe Dameron (Resistance Pilot)',
+      code: 'B3449',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Star Wars: The Force Awakens (2015–2016)',
+      franchiseName: 'Star Wars'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Star Wars: The Force Awakens (2015–2016)'
+  },
+  {
+    id: 'rel-sw-poe-dameron-tfa-blackseries-6',
+    name: 'Poe Dameron — The Black Series 6" (The Force Awakens #07)',
+    packagingType: 'Window Box (The Black Series 6")',
+    region: 'Global / Multilingual',
+    language: 'Multilingual (EN, ES, FR, DE)',
+    retailerExclusivity: 'General Retail',
+    releaseDate: '2015-11-01',
+    releaseYear: 2015,
+    barcode: '630509361120',
+    assortmentNumber: 'B3834 / B3831 ASST.',
+    collectorNotes: 'Figura de 6 polzades de Poe Dameron amb vestit de pilot de la Resistència i casc. Caixa de finestra numerada #07 The Black Series. UPC: 630509361120 / EAN: 5010994918736.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    associatedVariant: {
+      id: 'var-sw-poe-dameron-std',
+      name: 'Variant Estàndard Cardback',
+      distinguishingFeature: 'Uniforme de vol de la Resistència amb casc extraïble i accessori Build-A-Weapon'
+    },
+    parentFigure: {
+      id: 'fig-sw-poe-dameron-tfa',
+      name: 'Poe Dameron (Resistance Pilot)',
+      code: 'B3449',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Star Wars: The Force Awakens (2015–2016)',
+      franchiseName: 'Star Wars'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Star Wars: The Force Awakens (2015–2016)'
+  },
+  {
+    id: 'rel-sw-poe-dameron-tfa-walmart-375',
+    name: 'Poe Dameron — The Black Series 3.75" (Walmart Exclusive #08)',
+    packagingType: 'Carded Blister (The Black Series 3.75")',
+    region: 'North America / Global',
+    language: 'Multilingual / English',
+    retailerExclusivity: 'Walmart Exclusive',
+    releaseDate: '2015-10-15',
+    releaseYear: 2015,
+    barcode: '630509371785',
+    assortmentNumber: 'B4054 / B3831',
+    collectorNotes: 'Edició super-articulada de 3.75" The Black Series de Poe Dameron exclusiva de Walmart. Codi UPC: 630509371785.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    associatedVariant: {
+      id: 'var-sw-poe-dameron-std',
+      name: 'Variant Estàndard Cardback',
+      distinguishingFeature: 'Uniforme de vol de la Resistència amb casc extraïble i accessori Build-A-Weapon'
+    },
+    parentFigure: {
+      id: 'fig-sw-poe-dameron-tfa',
+      name: 'Poe Dameron (Resistance Pilot)',
+      code: 'B3449',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Star Wars: The Force Awakens (2015–2016)',
+      franchiseName: 'Star Wars'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Star Wars: The Force Awakens (2015–2016)'
+  },
+  {
+    id: 'rel-sw-poe-dameron-tfa-armor',
+    name: 'Poe Dameron (Flight Gear & Armor) — Build-A-Weapon Blister Card',
+    packagingType: 'Carded Blister (Armor / Weapon)',
+    region: 'Global / Multilingual',
+    language: 'Multilingual (EN, ES, FR, DE)',
+    retailerExclusivity: 'General Retail',
+    releaseDate: '2015-10-01',
+    releaseYear: 2015,
+    barcode: '630509358311',
+    assortmentNumber: 'B3831 / B3445 ASST.',
+    collectorNotes: 'Figura de 3,75" de Poe Dameron amb equipament de vol i armadura combinable. UPC: 630509358311 / EAN: 5010994921606.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    associatedVariant: {
+      id: 'var-sw-poe-dameron-std',
+      name: 'Variant Estàndard Cardback',
+      distinguishingFeature: 'Uniforme de vol de la Resistència amb casc extraïble i accessori Build-A-Weapon'
+    },
+    parentFigure: {
+      id: 'fig-sw-poe-dameron-tfa',
+      name: 'Poe Dameron (Resistance Pilot)',
+      code: 'B3449',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Star Wars: The Force Awakens (2015–2016)',
+      franchiseName: 'Star Wars'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Star Wars: The Force Awakens (2015–2016)'
+  },
+  {
+    id: 'rel-sw-poe-dameron-tfa-b3449-eu2',
+    name: 'Poe Dameron (Resistance Pilot) — Blister Europeu Trilingüe',
+    packagingType: 'Carded Blister (Build-A-Weapon)',
+    region: 'Europe / International',
+    language: 'Multilingual European (ES, EN, FR, DE, IT)',
+    retailerExclusivity: 'General Retail',
+    releaseDate: '2015-09-04',
+    releaseYear: 2015,
+    barcode: '5010994917463',
+    assortmentNumber: 'B3449 / B3445 ASST.',
+    collectorNotes: 'Targeta blister distribuïda a Europa amb codi de barres EAN-13 5010994917463.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    associatedVariant: {
+      id: 'var-sw-poe-dameron-std',
+      name: 'Variant Estàndard Cardback',
+      distinguishingFeature: 'Uniforme de vol de la Resistència amb casc extraïble i accessori Build-A-Weapon'
+    },
+    parentFigure: {
+      id: 'fig-sw-poe-dameron-tfa',
+      name: 'Poe Dameron (Resistance Pilot)',
+      code: 'B3449',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Star Wars: The Force Awakens (2015–2016)',
+      franchiseName: 'Star Wars'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Star Wars: The Force Awakens (2015–2016)'
+  },
+  {
+    id: 'rel-sw-poe-dameron-tfa-b3449-eu3',
+    name: 'Poe Dameron (Resistance Pilot) — Blister Espanya / Portugal',
+    packagingType: 'Carded Blister (Build-A-Weapon)',
+    region: 'Europe / Spain',
+    language: 'Multilingual (ES, PT, CA)',
+    retailerExclusivity: 'General Retail',
+    releaseDate: '2015-09-04',
+    releaseYear: 2015,
+    barcode: '5010994924256',
+    assortmentNumber: 'B3449 / B3445 ASST.',
+    collectorNotes: 'Targeta blister amb codi EAN-13 5010994924256 distribuïda a Espanya i sud d\'Europa.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    associatedVariant: {
+      id: 'var-sw-poe-dameron-std',
+      name: 'Variant Estàndard Cardback',
+      distinguishingFeature: 'Uniforme de vol de la Resistència amb casc extraïble i accessori Build-A-Weapon'
+    },
+    parentFigure: {
+      id: 'fig-sw-poe-dameron-tfa',
+      name: 'Poe Dameron (Resistance Pilot)',
+      code: 'B3449',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Star Wars: The Force Awakens (2015–2016)',
+      franchiseName: 'Star Wars'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Star Wars: The Force Awakens (2015–2016)'
+  },
+  {
+    id: 'rel-sw-queen-amidala-naboo-upc',
+    name: 'Queen Amidala (Naboo) — Blister CommTech (UPC 076930840955)',
+    packagingType: 'Carded Blister (CommTech / MOC)',
+    region: 'North America / Global',
+    language: 'English / Multilingual',
+    retailerExclusivity: 'General Retail',
+    releaseDate: '1999-05-03',
+    releaseYear: 1999,
+    barcode: '076930840955',
+    assortmentNumber: '84095 / 84080 ASST.',
+    collectorNotes: 'Edició original 1999 Star Wars Episode I Collection 1. Inclou vestit cerimonial vermell de Naboo i xip de veu CommTech. Codi UPC: 076930840955.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    associatedVariant: {
+      id: 'var-sw-amidala-naboo-std',
+      name: 'Variant Estàndard Naboo Royal Gown',
+      distinguishingFeature: 'Vestit reial vermell amb brodats daurats i xip CommTech'
+    },
+    parentFigure: {
+      id: 'fig-sw-queen-amidala-naboo',
+      name: 'Queen Amidala (Naboo)',
+      code: 'EP1-84095',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Episode I: The Phantom Menace (1999)',
+      franchiseName: 'Star Wars'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Episode I: The Phantom Menace (1999)'
+  },
+  {
+    id: 'rel-sw-queen-amidala-naboo-alt',
+    name: 'Queen Amidala (Naboo) — Blister Kenner / Hasbro (UPC 076281840789)',
+    packagingType: 'Carded Blister (CommTech / MOC)',
+    region: 'North America / Global',
+    language: 'English / Multilingual',
+    retailerExclusivity: 'General Retail',
+    releaseDate: '1999-05-03',
+    releaseYear: 1999,
+    barcode: '076281840789',
+    assortmentNumber: '84078 / 84080 ASST.',
+    collectorNotes: 'Edició original 1999 Star Wars Episode I amb prefix Kenner/Hasbro 076281840789.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    associatedVariant: {
+      id: 'var-sw-amidala-naboo-std',
+      name: 'Variant Estàndard Naboo Royal Gown',
+      distinguishingFeature: 'Vestit reial vermell amb brodats daurats i xip CommTech'
+    },
+    parentFigure: {
+      id: 'fig-sw-queen-amidala-naboo',
+      name: 'Queen Amidala (Naboo)',
+      code: 'EP1-84095',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Episode I: The Phantom Menace (1999)',
+      franchiseName: 'Star Wars'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Episode I: The Phantom Menace (1999)'
+  },
+  {
+    id: 'rel-sw-queen-amidala-coruscant-upc',
+    name: 'Queen Amidala (Coruscant Senate) — Blister CommTech (UPC 076930841150)',
+    packagingType: 'Carded Blister (CommTech / MOC)',
+    region: 'North America / Global',
+    language: 'English / Multilingual',
+    retailerExclusivity: 'General Retail',
+    releaseDate: '1999-05-03',
+    releaseYear: 1999,
+    barcode: '076930841150',
+    assortmentNumber: '84115 / 84080 ASST.',
+    collectorNotes: 'Edició original 1999 Star Wars Episode I Collection 2. Vestit imperial fosc del Senat Galàctic. UPC: 076930841150.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    associatedVariant: {
+      id: 'var-sw-amidala-coruscant-std',
+      name: 'Variant Senat Galàctic',
+      distinguishingFeature: 'Túnica senatorial cerimonial amb xip CommTech'
+    },
+    parentFigure: {
+      id: 'fig-sw-queen-amidala-coruscant',
+      name: 'Queen Amidala (Coruscant Senate)',
+      code: 'EP1-84115',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Episode I: The Phantom Menace (1999)',
+      franchiseName: 'Star Wars'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Episode I: The Phantom Menace (1999)'
+  },
+  {
+    id: 'rel-sw-queen-amidala-theed-upc',
+    name: 'Queen Amidala (Battle of Theed) — Blister CommTech (UPC 076930841358)',
+    packagingType: 'Carded Blister (CommTech / MOC)',
+    region: 'North America / Global',
+    language: 'English / Multilingual',
+    retailerExclusivity: 'General Retail',
+    releaseDate: '1999-05-03',
+    releaseYear: 1999,
+    barcode: '076930841358',
+    assortmentNumber: '84135 / 84080 ASST.',
+    collectorNotes: 'Edició original 1999 Star Wars Episode I Collection 3. Vestit de combat bordeus de Theed i blàster. UPC: 076930841358.',
+    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+    associatedVariant: {
+      id: 'var-sw-amidala-theed-std',
+      name: 'Variant Batalla de Theed',
+      distinguishingFeature: 'Uniforme de combat amb blàster d\'ascensió'
+    },
+    parentFigure: {
+      id: 'fig-sw-queen-amidala-theed',
+      name: 'Queen Amidala (Battle of Theed Invasion)',
+      code: 'EP1-84135',
+      imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=800&auto=format&fit=crop&q=80',
+      lineName: 'Episode I: The Phantom Menace (1999)',
+      franchiseName: 'Star Wars'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Episode I: The Phantom Menace (1999)'
   }
 ];
 

@@ -108,7 +108,21 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
   if (!isOpen) return null;
 
   const displayImage = release?.imageUrl || figure?.imageUrl || '/cardback_placeholder.jpeg';
-  const displayTitle = figure?.name || release?.name || t('ai.identification', 'Identified figure');
+  const isGenericTitle = !figure?.name ||
+    figure.name === 'Packaging Assortment' ||
+    figure.name === 'Figura per catalogar' ||
+    figure.name === 'Figura escanejada' ||
+    figure.name === 'Figura Star Wars' ||
+    figure.name === "Figura d'Acció" ||
+    figure.name.includes('per catalogar') ||
+    figure.name.includes('Assortiment') ||
+    figure.name.includes('Assortment');
+
+  const bestOptionTitle = options && options[0]?.title && !options[0].title.startsWith('Figura Star Wars') && !options[0].title.startsWith("Figura d'Acció") ? options[0].title : null;
+
+  const displayTitle = (!isGenericTitle && figure?.name)
+    ? figure.name
+    : bestOptionTitle || release?.name || (options && options[0]?.title) || figure?.name || t('ai.identification', 'Identified figure');
   const displayLine = figure?.line?.name || release?.lineName || t('nav.collection', 'General collection');
   const displayFranchise = figure?.franchise?.name || release?.franchiseName || 'Action Figures';
   const displayManufacturer = figure?.line?.manufacturerName || 'Kenner / Hasbro';
@@ -226,7 +240,7 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
               </div>
 
               {/* Main Identified Item Card */}
-              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850/50 flex flex-col sm:flex-row gap-4">
+              <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex flex-col sm:flex-row gap-4">
                 {/* Visual Thumbnail */}
                 <div className="w-full sm:w-28 h-36 sm:h-auto rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-950 shrink-0 flex items-center justify-center">
                   <img
