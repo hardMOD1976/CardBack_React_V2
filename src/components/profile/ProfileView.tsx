@@ -485,7 +485,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         <p className="text-xs text-slate-500 leading-relaxed">
-          {t('profile.consent_description', 'Manage permission for catalogue services, AI image processing, and barcode scanning. You can review or change your choice at any time.')}
+          {t('profile.consent_description', 'Manage permission for catalogue services and Google Lens AI image processing. You can review or change your choice at any time.')}
         </p>
 
         <div className="pt-1 flex flex-wrap items-center gap-2">

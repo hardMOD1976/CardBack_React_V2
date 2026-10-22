@@ -169,6 +169,11 @@ async function syncWithNeon() {
     });
     if (res.ok) {
       const data = await res.json();
+      if (data.quotaExceeded) {
+        dbConnected = false;
+        console.warn('[Neon] Quota limit reached (5GB). Operating in offline local storage mode.');
+        return;
+      }
       if (Array.isArray(data.items) && requestedUserId === activeUserId) {
         dbConnected = true;
 

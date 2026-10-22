@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { EntityType, FigureDetailResponseDto } from '../../types/domain';
 import { ApiService, AiFigureOption } from '../../services/apiService';
 import { getFigureImageUrl, handleImageError } from '../../utils/imageFallback';
@@ -18,16 +18,16 @@ import {
   DollarSign, 
   RefreshCw,
   Eye,
-  Sliders,
   ShieldCheck,
-  Search,
   Wifi,
   WifiOff,
   Globe,
   PackageX,
-  Tag,
-  Calendar,
-  Building2
+  SwitchCamera,
+  X,
+  Crosshair,
+  Layers,
+  RotateCcw
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -99,13 +99,6 @@ const SAMPLE_FIGURES = [
     description: 'Playmates 10-back amb cap de goma tova i katanes dobles'
   },
   {
-    label: '1999 Queen Amidala (Naboo Royal Gown)',
-    id: 'fig-sw-queen-amidala-naboo',
-    category: 'toy',
-    imageUrl: 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=600&auto=format&fit=crop&q=80',
-    description: 'Hasbro Star Wars Episodi I (1999) amb vestit cerimonial vermell de Naboo i xip de veu interactiu CommTech'
-  },
-  {
     label: 'Poma Fresca (Test: No Joguina -> Not Found)',
     id: 'test-non-toy-apple',
     category: 'non-toy',
@@ -124,6 +117,15 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
   const [result, setResult] = useState<IdentifiedResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   
+  // Real-time camera viewfinder streaming state
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const mobileFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
+
   // Real-time network connectivity state
   const [isOnline, setIsOnline] = useState<boolean>(() => {
     return typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -157,6 +159,112 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
     };
   }, []);
 
+  // Cleanup media stream on unmount
+  useEffect(() => {
+    return () => {
+      if (mediaStream) {
+        mediaStream.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, [mediaStream]);
+
+  // Connect video element to media stream when active
+  useEffect(() => {
+    if (isCameraActive && mediaStream && videoRef.current) {
+      videoRef.current.srcObject = mediaStream;
+      videoRef.current.play().catch(err => {
+        console.warn('Video auto-play warning:', err);
+      });
+    }
+  }, [isCameraActive, mediaStream]);
+
+  const startCamera = async (targetMode: 'environment' | 'user' = facingMode) => {
+    setCameraError(null);
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(t => t.stop());
+      setMediaStream(null);
+    }
+
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error("El navegador no suporta l'accés directe a la càmera. Pots pujar una foto.");
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: targetMode },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+
+      setMediaStream(stream);
+      setFacingMode(targetMode);
+      setIsCameraActive(true);
+    } catch (err: any) {
+      console.error('Camera startup error:', err);
+      setIsCameraActive(false);
+      setCameraError(
+        err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError'
+          ? "Permís de càmera denegat pel navegador. Si us plau, activa el permís o puja una fotografia."
+          : "No s'ha pogut iniciar el flux de la càmera. Pots fer una foto amb el botó de pujar fitxer."
+      );
+    }
+  };
+
+  const stopCamera = () => {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach(t => t.stop());
+      setMediaStream(null);
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraActive(false);
+  };
+
+  const switchCamera = () => {
+    const nextMode = facingMode === 'environment' ? 'user' : 'environment';
+    startCamera(nextMode);
+  };
+
+  const captureCameraFrame = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.drawImage(video, 0, 0, width, height);
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+    
+    // Freeze and stop camera stream
+    stopCamera();
+    setSelectedImage(dataUrl);
+    runIdentification(dataUrl);
+  };
+
+  const handleResetAll = () => {
+    stopCamera();
+    setSelectedImage(null);
+    setResult(null);
+    setErrorMessage(null);
+    setNotFoundMessage(null);
+    setNotFoundDetails(null);
+    setFoundOptions([]);
+    setSelectedOptionId(null);
+    setIsResultModalOpen(false);
+    setCameraError(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    if (mobileFileInputRef.current) mobileFileInputRef.current.value = '';
+  };
+
   // Helper to find or synthesize figure domain object
   const getOrSynthesizeFigure = (res: IdentifiedResult): FigureDetailResponseDto => {
     const existing = ApiService.getFigureDetail(res.figureId);
@@ -173,9 +281,9 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
     return {
       id: res.figureId,
       name: res.figureName,
-      code: `AI-${res.year}-${res.figureName.slice(0, 4).toUpperCase()}`,
+      code: `LENS-${res.year}-${res.figureName.slice(0, 4).toUpperCase()}`,
       year: res.year,
-      description: `Identificat per visió neuronal Gemini AI: ${res.figureName} de ${res.lineName} (${res.franchiseName}).`,
+      description: `Identificat per Google Lens (Gemini Vision AI): ${res.figureName} de ${res.lineName} (${res.franchiseName}).`,
       imageUrl: res.imageUrl,
       character: {
         id: `char-${res.figureName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
@@ -263,7 +371,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
     // If device is offline
     if (!isOnline && !samplePresetId) {
       setIsAnalyzing(false);
-      setErrorMessage(t('ai.offline_status', 'Internet is required to analyze new images and check catalogue records.'));
+      setErrorMessage(t('ai.offline_status', 'Es requereix connexió a Internet per analitzar fotografies amb Google Lens.'));
       return;
     }
 
@@ -279,7 +387,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
           return;
         }
         setNotFoundMessage(
-          t('ai.non_toy', 'No matching collectible figure or toy was found.')
+          t('ai.non_toy', "L'objecte fotografiat no és cap figura d'acció ni joguina catalogada.")
         );
         setNotFoundDetails({
           detectedSubject: aiResponse.detectedSubject || "Element no catalogat com a joguina",
@@ -394,7 +502,6 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
         setFoundOptions([]);
         setIsResultModalOpen(true);
       } else {
-        // Do NOT invent a fake random figure when an error occurs!
         const errMsg = err?.message?.includes("429") || err?.message?.includes("quota") || err?.message?.includes("RESOURCE_EXHAUSTED")
           ? "S'ha superat el límit temporal de peticions a la IA (429). Si us plau, espera uns segons i torna-ho a provar."
           : (err?.message || "No s'ha pogut identificar la figura en aquesta fotografia. Prova amb un altre angle o millor il·luminació.");
@@ -432,7 +539,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
           const ctx = canvas.getContext('2d');
           if (ctx) {
             ctx.drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL('image/jpeg', 0.82));
+            resolve(canvas.toDataURL('image/jpeg', 0.85));
           } else {
             resolve(e.target?.result as string);
           }
@@ -448,6 +555,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      stopCamera();
       try {
         setIsAnalyzing(true);
         const compressedUrl = await compressImage(file);
@@ -467,6 +575,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
   };
 
   const handleSelectSample = (sample: typeof SAMPLE_FIGURES[0]) => {
+    stopCamera();
     setSelectedImage(sample.imageUrl);
     runIdentification(sample.imageUrl, sample.id);
   };
@@ -476,21 +585,40 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
       {/* View Header with Connectivity State */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-              <Cpu className="w-5 h-5" />
+          <div className="flex items-center gap-2.5">
+            <span className="p-2 rounded-xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30">
+              <Sparkles className="w-5 h-5" />
             </span>
-            <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-display">
-            {t('ai.title', 'AI figure recognition')}
-            </h1>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-black text-slate-900 dark:text-slate-100 font-display">
+                  Google Lens (IA) • Identificació Visual
+                </h1>
+                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 font-mono uppercase tracking-wider">
+                  Vision Gemini AI
+                </span>
+              </div>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                Enfoca la figura o el blíster amb la càmera en directe o puja una fotografia per identificar motlle, variant, accessoris i valor de mercat.
+              </p>
+            </div>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {t('ai.subtitle', 'Take or upload a photo. If it shows a figure or toy, you will see matching catalogue options. Other objects will be marked as not found.')}
-          </p>
         </div>
 
-        {/* Real-time Internet Connectivity Badge */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        {/* Actions & Real-time Connectivity */}
+        <div className="flex items-center gap-2.5 self-start sm:self-auto flex-wrap">
+          {(selectedImage || result || notFoundMessage || isCameraActive || errorMessage) && (
+            <CbButton
+              variant="outline"
+              size="sm"
+              className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/40 cursor-pointer shadow-xs"
+              icon={<RotateCcw className="w-3.5 h-3.5" />}
+              onClick={handleResetAll}
+            >
+              Neteja
+            </CbButton>
+          )}
+
           {isOnline ? (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
               <span className="relative flex h-2 w-2">
@@ -498,12 +626,12 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
               <Wifi className="w-3.5 h-3.5 text-emerald-500" />
-              <span>{t('ai.online_status', 'Connected to the internet • AI recognition active')}</span>
+              <span>{t('ai.online_status', 'Connectat a Internet • Reconeixement amb IA actiu')}</span>
             </div>
           ) : (
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs font-medium">
               <WifiOff className="w-3.5 h-3.5 text-amber-500" />
-              <span>{t('ai.offline_status', 'Offline • Limited local search')}</span>
+              <span>{t('ai.offline_status', 'Sense connexió • Cerca local limitada')}</span>
             </div>
           )}
         </div>
@@ -514,82 +642,198 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
         <div className="lg:col-span-5 space-y-4">
           <CbCard className="p-4 border-slate-200 dark:border-slate-800 space-y-4">
             <div className="flex items-center justify-between text-xs font-semibold text-slate-600 dark:text-slate-400">
-              <span>{t('ai.capture_label', 'Photo / visual scanner')}</span>
+              <span className="flex items-center gap-1.5">
+                <Crosshair className="w-3.5 h-3.5 text-cyan-500" />
+                {isCameraActive ? "Visor de la Càmera en Directe" : "Visor Google Lens / Fotografia"}
+              </span>
               {isAnalyzing && (
-                <span className="flex items-center gap-1.5 text-blue-500 animate-pulse font-mono">
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> {t('ai.analyzing', 'AI analysis in progress')}
+                <span className="flex items-center gap-1.5 text-cyan-500 animate-pulse font-mono font-bold">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Identificant amb IA...
                 </span>
               )}
             </div>
 
-            {/* Visual Display Stage */}
-            <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center border border-slate-800 group">
-              {selectedImage ? (
+            {/* Visual Display Stage: Camera Stream or Snapshot Image */}
+            <div className="relative aspect-square rounded-2xl overflow-hidden bg-slate-950 flex items-center justify-center border-2 border-slate-800 shadow-inner group">
+              {isCameraActive ? (
+                <>
+                  {/* Live HTML5 Video Feed */}
+                  <video
+                    ref={videoRef}
+                    playsInline
+                    autoPlay
+                    muted
+                    className="w-full h-full object-cover"
+                  />
+
+                  {/* Google Lens Targeting Reticle & Hologram Overlay */}
+                  <div className="absolute inset-0 pointer-events-none p-6 flex flex-col justify-between">
+                    <div className="flex justify-between items-start">
+                      <div className="w-9 h-9 border-t-3 border-l-3 border-cyan-400 rounded-tl-xl shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
+                      <div className="w-9 h-9 border-t-3 border-r-3 border-cyan-400 rounded-tr-xl shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
+                    </div>
+
+                    {/* Animated Scanning Laser Line */}
+                    <div className="relative w-full h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_rgba(6,182,212,1)] animate-bounce" />
+
+                    <div className="flex justify-between items-end">
+                      <div className="w-9 h-9 border-b-3 border-l-3 border-cyan-400 rounded-bl-xl shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
+                      <div className="w-9 h-9 border-b-3 border-r-3 border-cyan-400 rounded-br-xl shadow-[0_0_10px_rgba(6,182,212,0.8)]" />
+                    </div>
+                  </div>
+
+                  {/* Camera Live Controls Floating Bar */}
+                  <div className="absolute bottom-4 inset-x-4 flex items-center justify-between z-20">
+                    <button
+                      type="button"
+                      onClick={switchCamera}
+                      title="Girar càmera (davant/darrere)"
+                      className="p-3 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white border border-slate-700/80 backdrop-blur-md transition-all cursor-pointer shadow-lg"
+                    >
+                      <SwitchCamera className="w-5 h-5" />
+                    </button>
+
+                    {/* Big Shutter Button */}
+                    <button
+                      type="button"
+                      onClick={captureCameraFrame}
+                      title="Capturar i identificar ara"
+                      className="w-16 h-16 rounded-full bg-gradient-to-tr from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 flex items-center justify-center shadow-xl shadow-cyan-500/40 ring-4 ring-white/30 active:scale-95 transition-all cursor-pointer group"
+                    >
+                      <Camera className="w-7 h-7 text-slate-950 group-hover:scale-110 transition-transform" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={stopCamera}
+                      title="Aturar càmera"
+                      className="p-3 rounded-full bg-slate-900/80 hover:bg-slate-800 text-white border border-slate-700/80 backdrop-blur-md transition-all cursor-pointer shadow-lg"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                </>
+              ) : selectedImage ? (
                 <>
                   <img
                     src={selectedImage}
-                    alt={t('ai.capture_label', 'Figure or object to identify')}
+                    alt="Figura o embalatge a identificar"
                     className="w-full h-full object-cover"
                   />
                   {isAnalyzing && (
-                    <div className="absolute inset-0 bg-blue-900/40 backdrop-blur-[1px] flex flex-col items-center justify-center text-white p-4 text-center">
-                      <div className="w-full h-1 bg-gradient-to-r from-transparent via-blue-400 to-transparent absolute top-0 animate-bounce" />
-                      <div className="p-3 rounded-full bg-slate-900/80 border border-blue-500/50 mb-2">
-                        <Cpu className="w-6 h-6 text-blue-400 animate-pulse" />
+                    <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs flex flex-col items-center justify-center text-white p-4 text-center z-10">
+                      <div className="w-full h-1 bg-gradient-to-r from-transparent via-cyan-400 to-transparent absolute top-0 animate-bounce" />
+                      <div className="p-3.5 rounded-2xl bg-cyan-500/20 border border-cyan-400/50 mb-3 shadow-[0_0_20px_rgba(6,182,212,0.4)]">
+                        <Sparkles className="w-7 h-7 text-cyan-300 animate-spin" />
                       </div>
-                      <span className="text-xs font-bold font-mono tracking-wider text-blue-200 uppercase">
-                  {t('ai.validating', 'Checking toy maker and figure mold online...')}
+                      <span className="text-xs font-bold font-mono tracking-wider text-cyan-200 uppercase">
+                        Consultant catàleg i motlle amb Gemini...
                       </span>
+                      <p className="text-[11px] text-slate-300 mt-1 max-w-xs">
+                        Reconeixent personatge, línia, fabricant, accessoris i variant d'embalatge
+                      </p>
                     </div>
                   )}
                 </>
               ) : (
                 <div className="text-center p-6 text-slate-500">
-                  <Camera className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-xs">{t('ai.no_image', 'No image loaded')}</p>
+                  <Camera className="w-12 h-12 mx-auto mb-2 opacity-50 text-cyan-400" />
+                  <p className="text-xs font-medium">Cap imatge o càmera activa</p>
                 </div>
               )}
             </div>
 
-            {/* Upload & Actions */}
-            <div className="flex flex-col sm:flex-row gap-2">
-              <label className="flex-1">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <div className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 cursor-pointer transition-colors">
-                  <Upload className="w-3.5 h-3.5 text-blue-500" />
-                  {t('ai.upload', 'Upload photo')}
+            {/* Camera Error Alert */}
+            {cameraError && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-300">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
+                <div className="flex-1">
+                  <span>{cameraError}</span>
                 </div>
-              </label>
+              </div>
+            )}
 
-              <label className="flex-1">
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <div className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg border border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-semibold hover:bg-amber-500/20 cursor-pointer transition-colors">
-                  <Camera className="w-3.5 h-3.5 text-amber-500" />
-                  {t('ai.take_photo', 'Take a photo')}
-                </div>
-              </label>
-
-              {selectedImage && !isAnalyzing && (
+            {/* Main Action Buttons */}
+            <div className="space-y-2">
+              {!isCameraActive ? (
                 <CbButton
                   variant="primary"
-                  size="sm"
-                  icon={<Sparkles className="w-3.5 h-3.5" />}
-                  onClick={() => selectedImage && runIdentification(selectedImage)}
+                  size="md"
+                  className="w-full justify-center bg-cyan-600 hover:bg-cyan-500 border-cyan-500 text-white shadow-md shadow-cyan-600/20 font-bold"
+                  icon={<Camera className="w-4 h-4" />}
+                  onClick={() => startCamera('environment')}
                 >
-                  {t('ai.identify', 'Identify')}
+                  Obrir Càmera en Directe (Google Lens)
+                </CbButton>
+              ) : (
+                <CbButton
+                  variant="amber"
+                  size="md"
+                  className="w-full justify-center font-bold"
+                  icon={<Sparkles className="w-4 h-4" />}
+                  onClick={captureCameraFrame}
+                >
+                  Capturar i Identificar Ara
                 </CbButton>
               )}
+
+              <div className="grid grid-cols-2 gap-2">
+                <label className="cursor-pointer">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <div className="w-full flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors">
+                    <Upload className="w-3.5 h-3.5 text-cyan-500" />
+                    Pujar Fotografia
+                  </div>
+                </label>
+
+                <label className="cursor-pointer">
+                  <input
+                    ref={mobileFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <div className="w-full flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors">
+                    <Camera className="w-3.5 h-3.5 text-amber-500" />
+                    Fer Foto Mòbil
+                  </div>
+                </label>
+              </div>
+
+              {/* Action Buttons: Reanalitzar & Neteja */}
+              <div className="flex items-center gap-2">
+                {selectedImage && !isCameraActive && !isAnalyzing && (
+                  <CbButton
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 justify-center"
+                    icon={<RefreshCw className="w-3.5 h-3.5" />}
+                    onClick={() => selectedImage && runIdentification(selectedImage)}
+                  >
+                    Reanalitzar
+                  </CbButton>
+                )}
+
+                {(selectedImage || result || notFoundMessage || isCameraActive || errorMessage) && (
+                  <CbButton
+                    variant="outline"
+                    size="sm"
+                    className={`${selectedImage && !isCameraActive && !isAnalyzing ? 'flex-1' : 'w-full'} justify-center border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 hover:border-rose-500/40 cursor-pointer`}
+                    icon={<RotateCcw className="w-3.5 h-3.5" />}
+                    onClick={handleResetAll}
+                  >
+                    Neteja
+                  </CbButton>
+                )}
+              </div>
             </div>
 
             {errorMessage && (
@@ -602,18 +846,19 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
 
           {/* Sample Preset Figures */}
           <div className="space-y-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono">
-              {t('ai.sample_tests', 'Sample tests (toys and non-toys)')}
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 font-mono flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-slate-400" />
+              Proves de mostra (Figures d'acció i no-joguines)
             </span>
             <div className="space-y-1.5">
-              {SAMPLE_FIGURES.map((sample) => (
+              {SAMPLE_FIGURES.map((sample, sIdx) => (
                 <button
-                  key={sample.id}
+                  key={`${sample.id}-${sIdx}`}
                   type="button"
                   onClick={() => handleSelectSample(sample)}
                   className={`w-full p-2 rounded-lg border text-left text-xs transition-colors flex items-center gap-2.5 cursor-pointer ${
-                    selectedImage === sample.imageUrl
-                      ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-950/20 text-blue-600 dark:text-blue-400 font-semibold'
+                    selectedImage === sample.imageUrl && !isCameraActive
+                      ? 'border-cyan-500 bg-cyan-50/50 dark:bg-cyan-950/20 text-cyan-600 dark:text-cyan-400 font-semibold'
                       : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700'
                   }`}
                 >
@@ -628,7 +873,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
                       <p className="truncate font-medium">{sample.label}</p>
                       {sample.category === 'non-toy' && (
                         <span className="text-[9px] px-1.5 py-0.2 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 font-semibold border border-rose-500/20">
-                  {t('ai.non_toy', 'Non-toy')}
+                          No joguina
                         </span>
                       )}
                     </div>
@@ -650,25 +895,25 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-blue-500" />
-                  {t('ai.options_found', 'Options found online ({{count}})').replace('{{count}}', String(foundOptions.length))}
+                  <Globe className="w-4 h-4 text-cyan-500" />
+                  Opcions trobades en línia ({foundOptions.length})
                 </h3>
                 <span className="text-[11px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                    {t('ai.verified_maker', 'Verified toy maker')}
+                  Fabricant de joguines verificat
                 </span>
               </div>
 
               {/* Options Selection Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {foundOptions.map((opt) => {
+                {foundOptions.map((opt, optIdx) => {
                   const isSelected = selectedOptionId === opt.id;
                   return (
                     <div
-                      key={opt.id}
+                      key={`${opt.id}-${optIdx}`}
                       onClick={() => applyOptionAsCurrent(opt)}
                       className={`p-3 rounded-xl border text-left cursor-pointer transition-all ${
                         isSelected
-                          ? 'border-blue-500 bg-blue-500/10 shadow-xs ring-1 ring-blue-500/30'
+                          ? 'border-cyan-500 bg-cyan-500/10 shadow-xs ring-1 ring-cyan-500/30'
                           : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'
                       }`}
                     >
@@ -677,8 +922,8 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
                           {opt.title}
                         </span>
                         {isSelected && (
-                          <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded shrink-0">
-                        {t('ai.active', 'Selected')}
+                          <span className="text-[10px] font-semibold text-cyan-600 dark:text-cyan-400 bg-cyan-500/10 px-1.5 py-0.5 rounded shrink-0">
+                            Seleccionada
                           </span>
                         )}
                       </div>
@@ -715,10 +960,10 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> {t('ai.identified_confidence', 'Identified with {{confidence}}% confidence').replace('{{confidence}}', String(result.confidence))}
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Identificat amb {result.confidence}% de precisió
                       </span>
                       <span className="text-xs text-slate-500 font-mono">
-                  {t('detail.year', 'Year')} {result.year} • {result.manufacturer}
+                        Any {result.year} • {result.manufacturer}
                       </span>
                     </div>
 
@@ -727,7 +972,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
                     </h2>
 
                     <p className="text-xs text-slate-600 dark:text-slate-400 font-medium">
-                  {t('nav.lines', 'Line')}: <span className="text-slate-900 dark:text-slate-200 font-semibold">{result.lineName}</span> • {t('nav.franchises', 'Franchise')}: <span className="text-slate-900 dark:text-slate-200 font-semibold">{result.franchiseName}</span>
+                      Línia: <span className="text-slate-900 dark:text-slate-200 font-semibold">{result.lineName}</span> • Franquícia: <span className="text-slate-900 dark:text-slate-200 font-semibold">{result.franchiseName}</span>
                     </p>
                   </div>
 
@@ -741,7 +986,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
                         onAddToCollection(fig, result.detectedVariant?.variantId);
                       }}
                     >
-                  {t('collection.add_btn', 'Add to collection')}
+                      Afegir a la col·lecció
                     </CbButton>
 
                     <CbButton
@@ -753,7 +998,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
                         onNavigateEntity('figure', fig.id);
                       }}
                     >
-                  {t('detail.catalogue', 'Catalogue record')}
+                      Fitxa del catàleg
                     </CbButton>
 
                     <CbButton
@@ -762,7 +1007,17 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
                       icon={<Sparkles className="w-3.5 h-3.5" />}
                       onClick={() => setIsResultModalOpen(true)}
                     >
-            {t('ai.results_modal', 'Recognition results')}
+                      Veure resultats detallats
+                    </CbButton>
+
+                    <CbButton
+                      variant="ghost"
+                      size="sm"
+                      icon={<RotateCcw className="w-3.5 h-3.5 text-slate-400 hover:text-rose-500" />}
+                      onClick={handleResetAll}
+                      className="text-slate-500 hover:text-rose-600 dark:hover:text-rose-400"
+                    >
+                      Neteja
                     </CbButton>
                   </div>
                 </div>
@@ -775,7 +1030,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-amber-500" />
                       <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              {t('ai.variant_detected', 'Detected variant')}: {result.detectedVariant.variantName}
+                        Variant detectada: {result.detectedVariant.variantName}
                       </h3>
                     </div>
                     <Badge variant="amber">{result.detectedVariant.rarity}</Badge>
@@ -783,7 +1038,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
 
                   <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
                     <span className="font-semibold text-slate-700 dark:text-slate-200">
-              {t('ai.visual_features', 'Visual features and mold identification:')}
+                      Trets visuals i identificació del motlle:
                     </span>
                     <ul className="list-disc list-inside space-y-1 pl-1 text-[11px] text-slate-500 dark:text-slate-400">
                       {result.detectedVariant.identifyingFeatures.map((feat, idx) => (
@@ -793,13 +1048,13 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
                   </div>
 
                   <div className="pt-2 border-t border-amber-500/20 flex items-center justify-between text-xs">
-                  <span className="text-slate-500">{t('ai.market_value', 'Collector market estimate:')}</span>
+                    <span className="text-slate-500">Valoració del mercat col·leccionista:</span>
                     <div className="flex items-center gap-4 font-mono font-bold">
                       <span className="text-slate-700 dark:text-slate-300">
-                  {t('ai.loose_value', 'Loose')}: ${result.detectedVariant.estimatedLooseValue}
+                        Loose (solta): ${result.detectedVariant.estimatedLooseValue}
                       </span>
                       <span className="text-emerald-600 dark:text-emerald-400">
-                  {t('ai.moc_value', 'MOC, carded')}: ${result.detectedVariant.estimatedMocValue}
+                        MOC (en blíster): ${result.detectedVariant.estimatedMocValue}
                       </span>
                     </div>
                   </div>
@@ -810,7 +1065,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <CbCard className="p-4 border-slate-200 dark:border-slate-800 space-y-2">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-                    <ShieldCheck className="w-4 h-4 text-blue-500" /> {t('ai.mold_check', 'Mold and articulation check')}
+                    <ShieldCheck className="w-4 h-4 text-cyan-500" /> Verificació de motlle i articulacions
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                     {result.moldingDetails}
@@ -819,7 +1074,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
 
                 <CbCard className="p-4 border-slate-200 dark:border-slate-800 space-y-2">
                   <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" /> {t('ai.authenticity_check', 'Authenticity verification')}
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Autenticitat i estat del plàstic
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                     {result.authenticityNotes}
@@ -831,7 +1086,7 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
               {result.accessoriesIdentified.length > 0 && (
                 <CbCard className="p-4 border-slate-200 dark:border-slate-800 space-y-2">
                   <div className="flex items-center justify-between text-xs font-bold text-slate-800 dark:text-slate-200">
-                  <span>{t('ai.authentic_accessories', 'Associated original accessories')}</span>
+                    <span>Accessoris originals associats</span>
                     <span className="text-[11px] text-slate-500 font-normal">
                       {result.accessoriesIdentified.length} peces verificades
                     </span>
@@ -851,14 +1106,14 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
             </div>
           ) : notFoundMessage ? (
             /* Explicit "Not Found" Screen when not a toy manufacturer or non-toy */
-            <div className="p-8 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/60 dark:bg-rose-950/20 text-center space-y-4 animate-fadeIn">
+            <div className="p-8 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50/60 dark:bg-rose-950/20 text-center space-y-4 animate-fadeIn">
               <div className="w-14 h-14 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto text-rose-500">
                 <PackageX className="w-7 h-7" />
               </div>
 
               <div className="space-y-1">
                 <h3 className="text-base font-bold text-rose-950 dark:text-rose-100">
-                {t('ai.not_found_title', 'Not found: this is not a figure or toy')}
+                  No s'ha trobat: no és cap figura ni joguina
                 </h3>
                 <p className="text-xs text-rose-800 dark:text-rose-300 max-w-lg mx-auto leading-relaxed">
                   {notFoundMessage}
@@ -866,20 +1121,20 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
               </div>
 
               {notFoundDetails?.detectedSubject && (
-                <div className="inline-block p-3 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-rose-200 dark:border-rose-900 text-left text-xs max-w-sm mx-auto">
+                <div className="inline-block p-3.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-rose-200 dark:border-rose-900 text-left text-xs max-w-sm mx-auto shadow-xs">
                   <div className="font-semibold text-slate-800 dark:text-slate-200">
-                {t('ai.detected_subject', 'Object detected in the photo:')}
+                    Objecte detectat a la fotografia:
                   </div>
-                  <div className="text-slate-600 dark:text-slate-400 mt-0.5">
-                  • <strong>{t('ai.identification', 'Identification')}:</strong> {notFoundDetails.detectedSubject}
+                  <div className="text-slate-600 dark:text-slate-400 mt-1">
+                    • <strong>Identificació:</strong> {notFoundDetails.detectedSubject}
                   </div>
                   {notFoundDetails.reason && (
                     <div className="text-slate-600 dark:text-slate-400 mt-0.5">
-                  • <strong>{t('ai.reason', 'Reason')}:</strong> {notFoundDetails.reason}
+                      • <strong>Motiu:</strong> {notFoundDetails.reason}
                     </div>
                   )}
-                  <div className="text-[11px] text-rose-600 dark:text-rose-400 mt-1 italic">
-                {t('ai.classification', 'Classification: not a collectible action figure or toy.')}
+                  <div className="text-[11px] text-rose-600 dark:text-rose-400 mt-1.5 italic font-medium">
+                    Classificació: No és cap figura d'acció ni joguina de col·lecció.
                   </div>
                 </div>
               )}
@@ -892,7 +1147,15 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
                     handleSelectSample(SAMPLE_FIGURES[0]);
                   }}
                 >
-                {t('ai.try_valid_sample', 'Try a valid Star Wars Kenner sample')}
+                  Provar una mostra vàlida de Star Wars Kenner
+                </CbButton>
+                <CbButton
+                  variant="outline"
+                  size="sm"
+                  icon={<RotateCcw className="w-3.5 h-3.5" />}
+                  onClick={handleResetAll}
+                >
+                  Neteja
                 </CbButton>
                 <CbButton
                   variant="ghost"
@@ -902,26 +1165,38 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
                     setNotFoundDetails(null);
                   }}
                 >
-                {t('common.close', 'Close')}
+                  Tancar
                 </CbButton>
               </div>
             </div>
           ) : (
             /* Standby State */
-            <div className="h-full min-h-[380px] rounded-xl border border-dashed border-slate-300 dark:border-slate-800 flex flex-col items-center justify-center p-8 text-center text-slate-500">
-              <Cpu className="w-12 h-12 text-slate-400 mb-3 opacity-60" />
-              <h3 className="text-base font-bold text-slate-700 dark:text-slate-300">
-              {t('ai.ready_title', 'Ready for online visual analysis')}
+            <div className="h-full min-h-[380px] rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-800 flex flex-col items-center justify-center p-8 text-center text-slate-500">
+              <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-500 mb-4">
+                <Camera className="w-8 h-8" />
+              </div>
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+                A punt per a l'escaneig amb Google Lens (IA)
               </h3>
-              <p className="text-xs text-slate-400 max-w-sm mt-1 leading-relaxed">
-              {t('ai.ready_body', 'Upload or take a photo of a figure or package. Gemini will check whether it is a toy, compare online records, and show possible matches.')}
+              <p className="text-xs text-slate-400 max-w-sm mt-1.5 leading-relaxed">
+                Fes servir la càmera en directe per enfocar la figura o blíster, o puja una imatge. Gemini analitzarà el fabricant, personatge, variant i estat de conservació a l'instant.
               </p>
+              <div className="mt-5 flex items-center gap-3">
+                <CbButton
+                  variant="amber"
+                  size="sm"
+                  icon={<Camera className="w-4 h-4" />}
+                  onClick={() => startCamera('environment')}
+                >
+                  Iniciar Càmera Google Lens
+                </CbButton>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* Modal Dialog with AI Recognition Results */}
+      {/* Modal Dialog with Full Results, Variants & Action Buttons */}
       <ScanResultModal
         isOpen={isResultModalOpen}
         onClose={() => setIsResultModalOpen(false)}

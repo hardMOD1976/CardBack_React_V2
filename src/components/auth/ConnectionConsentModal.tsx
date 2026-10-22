@@ -4,8 +4,7 @@ import {
   Wifi, 
   ShieldCheck, 
   Lock, 
-  Cpu, 
-  ScanBarcode, 
+  Sparkles, 
   Check, 
   X, 
   AlertCircle,
@@ -111,14 +110,14 @@ export const ConnectionConsentModal: React.FC<ConnectionConsentModalProps> = ({
             </p>
           </div>
 
-          {/* Point 2: AI and Barcode Recognition */}
+          {/* Point 2: Visual AI Recognition (Google Lens) */}
           <div className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60 space-y-1.5">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-slate-100 flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-blue-500 shrink-0" />
-              <span>{t('consent.section2_title', '2. AI recognition and barcode scanning (Google Gemini)')}</span>
+              <Sparkles className="w-4 h-4 text-cyan-500 shrink-0" />
+              <span>{t('consent.section2_title', '2. Reconeixement visual amb Google Lens (IA Gemini)')}</span>
             </h3>
             <p className="text-xs text-slate-700 dark:text-slate-200 leading-relaxed pl-6">
-              {t('consent.section2_body', 'When you use barcode scanning or AI visual recognition, encrypted data such as figure photos or UPC/EAN numbers are sent to Gemini AI servers to identify molds, original accessories, product lines, and authenticity.')}
+              {t('consent.section2_body', 'Quan utilitzes el reconeixement visual Google Lens, les fotos de la figura s\'analitzen de forma xifrada per identificar automàticament motlles, accessoris originals, línies i autenticitat.')}
             </p>
           </div>
 

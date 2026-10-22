@@ -3,7 +3,6 @@ import crypto from "crypto";
 
 let genAiClient: GoogleGenAI | null = null;
 const visualAnalysisCache = new Map<string, IdentifiedFigureResult>();
-const barcodeDetectionCache = new Map<string, BarcodeDetectionResult>();
 
 function getGenAiClient(): GoogleGenAI {
   if (!genAiClient) {
@@ -66,14 +65,7 @@ export interface IdentifiedFigureResult {
   options?: AiFigureOption[];
 }
 
-export interface BarcodeDetectionResult {
-  success: boolean;
-  barcode?: string | null;
-  format?: string;
-  figureName?: string;
-  lineName?: string;
-  details?: string;
-}
+
 
 /**
  * Extracts base64 payload and MIME type from data URL or remote URL.
@@ -479,7 +471,7 @@ Respond ONLY with valid JSON in this exact structure without markdown backticks 
 }
 `;
 
-  const modelsToTry = ["gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"];
+  const modelsToTry = ["gemini-flash-latest", "gemini-3.1-flash-lite", "gemini-3.8-flash"];
   let lastError: any = null;
   let responseText = "";
 
@@ -526,7 +518,7 @@ Respond ONLY with valid JSON in this exact structure without markdown backticks 
 
     let friendlyMessage = "No s'ha pogut processar la fotografia amb la IA en aquest moment.";
     if (is503) {
-      friendlyMessage = "El model de visió intel·ligent té una alta demanda temporal (503). Prova de tornar-ho a intentar en uns segons o utilitza el codi de barres de l'embalatge.";
+      friendlyMessage = "El model de visió intel·ligent té una alta demanda temporal (503). Prova de tornar-ho a intentar en uns segons.";
     } else if (isRateLimit) {
       friendlyMessage = "S'ha superat el límit temporal de peticions a la IA (429 Quota Exceeded). Si us plau, espera uns segons abans de tornar-ho a provar.";
     }
@@ -734,140 +726,5 @@ Respond ONLY with valid JSON in this exact structure without markdown backticks 
   }
 }
 
-/**
- * Optical barcode recognition from action figure package photo using Gemini Vision.
- */
-export async function detectBarcodeWithAi(imageBase64OrUrl: string): Promise<BarcodeDetectionResult> {
-  const inlineImage = await resolveImageInlineData(imageBase64OrUrl);
 
-  const imageHash = crypto
-    .createHash("sha256")
-    .update(inlineImage.data)
-    .digest("hex");
 
-  if (barcodeDetectionCache.has(imageHash)) {
-    return barcodeDetectionCache.get(imageHash)!;
-  }
-
-  // Check known visual profiles (e.g. Queen Amidala packaging)
-  const lowerUrl = imageBase64OrUrl.toLowerCase();
-  const isAmidala = lowerUrl.includes("photo-1579546929518-9e396f3cc809") ||
-    lowerUrl.includes("amidala") ||
-    lowerUrl.includes("queen") ||
-    lowerUrl.includes("naboo") ||
-    lowerUrl.includes("coruscant") ||
-    lowerUrl.includes("theed") ||
-    lowerUrl.includes("84095") ||
-    lowerUrl.includes("84115") ||
-    lowerUrl.includes("84135");
-
-  if (isAmidala) {
-    const amidalaBarcodeResult: BarcodeDetectionResult = {
-      success: true,
-      barcode: "076930840955",
-      format: "UPC-A",
-      figureName: "Queen Amidala (Naboo)",
-      lineName: "Episode I: The Phantom Menace (1999)",
-      details: "Figura oficial Hasbro Star Wars Episodi I (1999) de la Reina Amidala amb vestit cerimonial vermell de Naboo i xip de veu interactiu CommTech. No. 84095."
-    };
-    barcodeDetectionCache.set(imageHash, amidalaBarcodeResult);
-    return amidalaBarcodeResult;
-  }
-
-  const ai = getGenAiClient();
-
-  const prompt = `You are a high-precision barcode scanner and toy packaging archivist.
-Examine this action figure cardback or packaging photo.
-Look for:
-1. ANY barcode (UPC-A, EAN-13, JAN, Code 128, or numbers printed under or beside barcode stripes, e.g. "076930840955", "630509345403", "076281695822").
-2. The EXACT character name printed on the packaging, nameplate, or "PROOF OF PURCHASE" label (e.g. "QUEEN AMIDALA", "DARTH MAUL", "QUI-GON JINN", "OBI-WAN KENOBI", "POE DAMERON", "DARTH VADER", "LUKE SKYWALKER", etc.).
-3. The toy line or packaging series (e.g. "Episode I: The Phantom Menace (1999)", "Star Wars: The Force Awakens", "The Black Series", "The Vintage Collection", "The Power of the Force", etc.).
-4. The product SKU or assortment number (e.g. "84095", "84080", "B3449").
-
-Respond ONLY with valid JSON (no markdown backticks):
-{
-  "success": true,
-  "barcode": "<numeric digits printed under or near the barcode>",
-  "format": "UPC-A",
-  "figureName": "<character name printed on the packaging>",
-  "lineName": "<toy line printed on the packaging>",
-  "details": "<short description of what is observed on the package>"
-}
-
-CRITICAL RULES:
-- Extract all readable numeric digits from the barcode under or near the stripes. Strip spaces and non-numeric characters from "barcode".
-- If character name is visible on the package (such as Queen Amidala, Darth Maul, Qui-Gon Jinn, Obi-Wan Kenobi, Darth Vader, Luke Skywalker, etc.), ALWAYS populate "figureName".
-- If the packaging belongs to Star Wars Episode I Queen Amidala, barcode is 076930840955.
-- If the barcode numbers cannot be clearly read from the image, set "barcode": null and return the extracted character name and line name.
-`;
-
-  const modelsToTry = ["gemini-3.1-flash-lite", "gemini-3.5-flash", "gemini-3.8-flash"];
-  let lastError: any = null;
-  let responseText = "";
-
-  for (const modelName of modelsToTry) {
-    try {
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: {
-          parts: [
-            { inlineData: inlineImage },
-            { text: prompt }
-          ]
-        },
-        config: {
-          temperature: 0.0,
-          responseMimeType: "application/json",
-        }
-      });
-      if (response.text) {
-        responseText = response.text;
-        break;
-      }
-    } catch (err: any) {
-      lastError = err;
-      console.warn(`Model ${modelName} failed for barcode detection:`, err.message);
-    }
-  }
-
-  if (!responseText) {
-    const errStr = lastError?.message || "";
-    const is503 = errStr.includes("503") || errStr.includes("high demand") || errStr.includes("UNAVAILABLE");
-    const isQuota = errStr.includes("quota") || errStr.includes("RESOURCE_EXHAUSTED") || errStr.includes("429");
-    let friendly = "No s'ha pogut distingir el codi de barres al fotograma.";
-    if (is503) {
-      friendly = "El servei de Gemini IA té una alta demanda en aquest moment (503). Si us plau, torna a provar en uns segons o introdueix el codi de barres manualment.";
-    } else if (isQuota) {
-      friendly = "S'ha superat temporalment la quota de la IA (429 Quota Exceeded). Si us plau, espera uns segons o introdueix el codi manualment.";
-    }
-    return {
-      success: false,
-      details: friendly
-    };
-  }
-
-  const rawText = responseText;
-  const cleaned = rawText.replace(/```json/gi, "").replace(/```/g, "").trim();
-
-  try {
-    const parsed = JSON.parse(cleaned);
-    
-    // Purge any hallucinated franchise like Doctor Who
-    if (parsed && typeof parsed === "object") {
-      const textDump = `${parsed.figureName || ''} ${parsed.lineName || ''} ${parsed.details || ''}`.toLowerCase();
-      if (textDump.includes("who") || textDump.includes("doctor")) {
-        parsed.figureName = "Figura per catalogar";
-        parsed.lineName = "Col·lecció d'Acció";
-        parsed.details = "Embalatge escanejat.";
-      }
-      barcodeDetectionCache.set(imageHash, parsed);
-    }
-    return parsed;
-  } catch (err) {
-    console.error("Failed to parse Gemini barcode response:", rawText, err);
-    return {
-      success: false,
-      details: "Could not decode barcode from image."
-    };
-  }
-}

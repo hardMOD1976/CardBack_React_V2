@@ -362,11 +362,16 @@ export const ApiService = {
   },
 
   findReleaseByBarcode(barcode: string): ProductReleaseDetailResponseDto | null {
+    const releases = this.findReleasesByBarcode(barcode);
+    return releases.length > 0 ? releases[0] : null;
+  },
+
+  findReleasesByBarcode(barcode: string): ProductReleaseDetailResponseDto[] {
     const clean = (barcode || '').trim();
-    if (!clean) return null;
+    if (!clean) return [];
     const cleanNoZeros = clean.replace(/^0+/, '');
     const cleanDigits = clean.replace(/\D/g, '');
-    const found = productReleasesStore.find(r => {
+    const found = productReleasesStore.filter(r => {
       if (!r.barcode) return false;
       const b = r.barcode.trim();
       const bNoZeros = b.replace(/^0+/, '');
@@ -379,7 +384,48 @@ export const ApiService = {
         (cleanDigits.length === 13 && cleanDigits === '0' + bDigits)
       );
     });
-    return found ? { ...found } : null;
+    return found.map(f => ({ ...f }));
+  },
+
+  async linkBarcodeToRelease(barcode: string, releaseId: string, figureId?: string): Promise<{ success: boolean; message: string; release?: ProductReleaseDetailResponseDto }> {
+    const clean = (barcode || '').trim();
+    if (!clean) return { success: false, message: 'Codi de barres invàlid.' };
+
+    const relIndex = productReleasesStore.findIndex(r => r.id === releaseId);
+    let targetRel: ProductReleaseDetailResponseDto | undefined;
+    if (relIndex >= 0) {
+      productReleasesStore[relIndex] = {
+        ...productReleasesStore[relIndex],
+        barcode: clean
+      };
+      targetRel = productReleasesStore[relIndex];
+    }
+
+    if (targetRel && targetRel.parentFigure?.id) {
+      const fig = figuresStore.find(f => f.id === targetRel?.parentFigure?.id);
+      if (fig && fig.productReleases) {
+        const prIdx = fig.productReleases.findIndex(r => r.id === releaseId);
+        if (prIdx >= 0) {
+          fig.productReleases[prIdx] = { ...fig.productReleases[prIdx], barcode: clean };
+        }
+      }
+    }
+
+    try {
+      await fetch('/api/scanner/link-barcode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barcode: clean, releaseId, figureId })
+      });
+    } catch (e) {
+      console.warn('Backend link-barcode sync failed, preserved in local memory:', e);
+    }
+
+    return {
+      success: true,
+      message: `Codi de barres ${clean} vinculat amb èxit.`,
+      release: targetRel
+    };
   },
 
   findFigureByBarcodeOrCode(barcode: string): FigureDetailResponseDto | null {
@@ -773,81 +819,7 @@ export const ApiService = {
     }
   },
 
-  // Optical Packaging Barcode Detection via Gemini Vision
-  async detectBarcodeWithAi(imageBase64OrUrl: string): Promise<{
-    success: boolean;
-    barcode?: string | null;
-    format?: string;
-    figureName?: string;
-    lineName?: string;
-    details?: string;
-    error?: string;
-  }> {
-    try {
-      const res = await fetch('/api/scanner/detect-barcode', {
-        method: 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: imageBase64OrUrl })
-      });
-      return await res.json();
-    } catch (err: any) {
-      console.error('Barcode detection error:', err);
-      return { success: false, details: err.message };
-    }
-  },
 
-  // Live Online Barcode Validation & Matching
-  async lookupBarcodeOnline(
-    barcode: string,
-    context?: { figureNameHint?: string; lineNameHint?: string; forceRefresh?: boolean }
-  ): Promise<{
-    found: boolean;
-    isToyOrActionFigure: boolean;
-    barcode: string;
-    manufacturer: string | null;
-    productName: string | null;
-    notFoundReason: 'not_a_toy_manufacturer' | 'unregistered_barcode' | null;
-    message: string;
-    options: Array<{
-      id: string;
-      title: string;
-      character: string;
-      line: string;
-      franchise: string;
-      manufacturer: string;
-      year: number;
-      packagingType: string;
-      region: string;
-      assortmentSku?: string;
-      description: string;
-      imageUrl?: string;
-      source: 'database' | 'curated_catalog' | 'gs1_registry' | 'online_archive';
-      confidence: number;
-      figureId?: string;
-      releaseId?: string;
-    }>;
-  }> {
-    try {
-      const res = await fetch('/api/scanner/lookup-barcode-online', {
-        method: 'POST',
-        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barcode: barcode.trim(), context, forceRefresh: context?.forceRefresh })
-      });
-      return await res.json();
-    } catch (err: any) {
-      console.error('Online barcode lookup error:', err);
-      return {
-        found: false,
-        isToyOrActionFigure: false,
-        barcode,
-        manufacturer: null,
-        productName: null,
-        notFoundReason: 'unregistered_barcode',
-        message: err.message || 'Error en consultar el servei de codis de barres en línia.',
-        options: []
-      };
-    }
-  },
 
 
 

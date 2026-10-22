@@ -281,9 +281,9 @@ export const CollectionView: React.FC<CollectionViewProps> = ({
       {/* Collection Grid */}
       {filteredItems.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-          {filteredItems.map(item => (
+          {filteredItems.map((item, idx) => (
             <CbCard
-              key={item.id}
+              key={`${item.id}-${idx}`}
               cardbackStyle
               interactive
               onClick={() => onNavigate('figure', item.figureId)}

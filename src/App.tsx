@@ -8,7 +8,6 @@ import { DashboardView } from './components/dashboard/DashboardView';
 import { DatabankView } from './components/databank/DatabankView';
 import { CollectionView } from './components/collection/CollectionView';
 import { AiIdentifyView } from './components/ai/AiIdentifyView';
-import { ScanBarcodeView } from './components/scanner/ScanBarcodeView';
 import { ProfileView } from './components/profile/ProfileView';
 import { GlobalSearchResults } from './components/search/GlobalSearchResults';
 import { TransversalDetailView } from './components/detail/TransversalDetailView';
@@ -26,8 +25,7 @@ import {
   Bookmark, 
   Database, 
   Heart, 
-  Cpu, 
-  ScanBarcode, 
+  Sparkles, 
   User 
 } from 'lucide-react';
 
@@ -119,11 +117,8 @@ export default function App() {
     } else if (hash === 'wishlist') {
       setCurrentView('wishlist');
       setDetailTarget(null);
-    } else if (hash === 'ai-identify' || hash === 'ai_identify') {
+    } else if (hash === 'ai-identify' || hash === 'ai_identify' || hash === 'scan-barcode' || hash === 'scan_barcode') {
       setCurrentView('ai_identify');
-      setDetailTarget(null);
-    } else if (hash === 'scan-barcode' || hash === 'scan_barcode') {
-      setCurrentView('scan_barcode');
       setDetailTarget(null);
     } else if (hash === 'profile') {
       setCurrentView('profile');
@@ -445,15 +440,7 @@ export default function App() {
             />
           )}
 
-          {/* 6. Scan Barcode View */}
-          {currentView === 'scan_barcode' && (
-            <ScanBarcodeView
-              onNavigateEntity={handleNavigateEntity}
-              onAddToCollection={handleAddToCollectionWithContext}
-            />
-          )}
-
-          {/* 7. Profile View */}
+          {/* 6. Profile View */}
           {currentView === 'profile' && (
             <ProfileView
               currentUser={currentUser}
@@ -491,19 +478,18 @@ export default function App() {
         </main>
       </div>
 
-      {/* Mobile Bottom Navigation Bar (Including Barcode Scanner prominently) */}
+      {/* Mobile Bottom Navigation Bar (Highlighting Google Lens AI prominently) */}
       <nav aria-label={t('nav.mobile_label', 'Mobile navigation')} className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex items-center justify-around py-1 px-1 shadow-lg">
         {[
           { id: 'dashboard', label: t('nav.dashboard', 'Dashboard'), icon: <LayoutDashboard className="w-4 h-4" /> },
           { id: 'collection', label: t('nav.collection', 'Collection'), icon: <Bookmark className="w-4 h-4" /> },
-          { id: 'databank', label: t('nav.databank', 'Databank'), icon: <Database className="w-4 h-4" /> },
           { 
-            id: 'scan_barcode', 
-            label: t('nav.quick_scan', 'Scan'), 
-            icon: <ScanBarcode className="w-5 h-5" />,
+            id: 'ai_identify', 
+            label: 'Google Lens', 
+            icon: <Sparkles className="w-5 h-5 text-cyan-500 dark:text-cyan-400" />,
             isPrimary: true
           },
-          { id: 'ai_identify', label: t('nav.ai_identify', 'AI Identify'), icon: <Cpu className="w-4 h-4" /> },
+          { id: 'databank', label: t('nav.databank', 'Databank'), icon: <Database className="w-4 h-4" /> },
           { id: 'profile', label: t('nav.profile', 'Profile'), icon: <User className="w-4 h-4" /> }
         ].map(item => {
           const active = currentView === item.id;
@@ -516,21 +502,21 @@ export default function App() {
               className={`flex flex-col items-center gap-0.5 p-1 rounded-xl text-[10px] font-semibold transition-all relative ${
                 item.isPrimary
                   ? active
-                    ? 'text-amber-500 dark:text-amber-400 font-bold scale-105'
-                    : 'text-slate-500 dark:text-slate-400 hover:text-amber-500 dark:hover:text-amber-400'
+                    ? 'text-cyan-600 dark:text-cyan-400 font-bold scale-105'
+                    : 'text-slate-500 dark:text-slate-400 hover:text-cyan-500 dark:hover:text-cyan-400'
                   : active
                   ? 'text-amber-500 dark:text-amber-400'
                   : 'text-slate-500 dark:text-slate-400'
               }`}
             >
               {item.isPrimary ? (
-                <div className={`p-1 rounded-full transition-colors ${active ? 'bg-amber-500/20 ring-2 ring-amber-500' : ''}`}>
+                <div className={`p-1 rounded-full transition-colors ${active ? 'bg-cyan-500/20 ring-2 ring-cyan-500' : ''}`}>
                   {item.icon}
                 </div>
               ) : (
                 item.icon
               )}
-              <span className="truncate max-w-[50px] text-center leading-tight">{item.label}</span>
+              <span className="truncate max-w-[60px] text-center leading-tight">{item.label}</span>
             </button>
           );
         })}
@@ -543,10 +529,6 @@ export default function App() {
         onChooseAi={() => {
           setIsChoiceModalOpen(false);
           handleSelectView('ai_identify');
-        }}
-        onChooseBarcode={() => {
-          setIsChoiceModalOpen(false);
-          handleSelectView('scan_barcode');
         }}
         onChooseManual={() => {
           setIsChoiceModalOpen(false);

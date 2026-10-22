@@ -166,7 +166,7 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 {t('auth.slogan', 'Where your collection lives!')}
               </h2>
               <p className="mx-auto mt-5 max-w-xl text-sm leading-7 text-slate-600 dark:text-slate-300 sm:text-base md:mx-0">
-                {t('dashboard.welcome_subtitle', 'Your home for action figure archiving. Track condition, inspect variants, scan barcodes, and get AI visual appraisals.')}
+                {t('dashboard.welcome_subtitle', 'Your authoritative hub for action figure archiving. Track conditions, inspect variants, and identify figures instantly with Google Lens AI.')}
               </p>
               <button
                 type="button"

@@ -634,6 +634,68 @@ export const LINES: LineDetailResponseDto[] = [
 
 export const FIGURES: FigureDetailResponseDto[] = [
   {
+    id: 'fig-sw-morgan-elsbeth-retro',
+    name: 'Morgan Elsbeth (The Retro Collection)',
+    code: 'F8376',
+    year: 2023,
+    description: 'Morgan Elsbeth as depicted in the Disney+ live-action series Star Wars: Ahsoka, created in nostalgic 3.75" Kenner vintage action figure style with 5 points of articulation.',
+    imageUrl: '/cardback_placeholder.jpeg',
+    character: {
+      id: 'char-morgan-elsbeth',
+      name: 'Morgan Elsbeth',
+      description: 'Former Magistrate of Calodan, Nightsister of Dathomir, and ally to Grand Admiral Thrawn.',
+      imageUrl: '/cardback_placeholder.jpeg',
+      affiliation: 'Shadow Council / Nightsisters'
+    },
+    line: {
+      id: 'line-sw-retro',
+      name: 'Retro Collection (2019–Present)',
+      manufacturerName: 'Hasbro',
+      startYear: 2019,
+      scale: '3.75 inch (1:18)'
+    },
+    franchise: {
+      id: 'fran-star-wars',
+      name: 'Star Wars'
+    },
+    sculptDetails: 'Authentic 1970s Kenner style 5-POA sculpt with retro aesthetic, fabric robe styling, and beskar spear.',
+    articulationPoints: 5,
+    originalAccessories: ['Beskar Spear'],
+    variants: [],
+    productReleases: []
+  },
+  {
+    id: 'fig-sw-luke-stormtrooper-potf2',
+    name: 'Luke Skywalker (in Stormtrooper Disguise)',
+    code: 'POTF2-69573',
+    year: 1996,
+    description: 'Luke Skywalker disguised in Imperial Stormtrooper armor as seen aboard the Death Star in A New Hope, complete with removable helmet and blaster rifle.',
+    imageUrl: '/cardback_placeholder.jpeg',
+    character: {
+      id: 'char-luke-skywalker',
+      name: 'Luke Skywalker',
+      description: 'The Tatooine farm boy destined to become a Jedi Knight.',
+      imageUrl: 'https://images.unsplash.com/photo-1546776310-eef45dd6d63c?w=800&auto=format&fit=crop&q=80',
+      affiliation: 'Rebel Alliance'
+    },
+    line: {
+      id: 'line-sw-potf2',
+      name: 'The Power of the Force 2 (1995–2000)',
+      manufacturerName: 'Kenner / Hasbro',
+      startYear: 1995,
+      scale: '3.75 inch (1:18)'
+    },
+    franchise: {
+      id: 'fran-star-wars',
+      name: 'Star Wars'
+    },
+    sculptDetails: 'Imperial Stormtrooper armor sculpt with removable helmet revealing Luke Skywalker portrait, 6 points of articulation.',
+    articulationPoints: 6,
+    originalAccessories: ['Removable Stormtrooper Helmet', 'Imperial Blaster Rifle'],
+    variants: [],
+    productReleases: []
+  },
+  {
     id: 'fig-sw-vader-potf2',
     name: 'Darth Vader (POTF2)',
     code: 'POTF2-01',
@@ -1165,6 +1227,64 @@ export const VARIANTS: VariantDetailResponseDto[] = [
 ];
 
 export const PRODUCT_RELEASES: ProductReleaseDetailResponseDto[] = [
+  {
+    id: 'rel-sw-morgan-elsbeth-retro',
+    name: 'Morgan Elsbeth — Star Wars: The Retro Collection (Ahsoka)',
+    releaseYear: 2023,
+    releaseDate: '2023-10-01',
+    language: 'English',
+    packagingType: 'Carded Blister (Retro Cardback / Kenner Style)',
+    barcode: '5010996184597',
+    assortmentNumber: 'F8376 / F8359 ASST.',
+    region: 'Europe / International / Global',
+    retailerExclusivity: 'General Retail',
+    collectorNotes: 'Packaging features weathered faux-creased Kenner cardback artwork, Ahsoka series title branding, and EAN: 5010996184597.',
+    imageUrl: '/cardback_placeholder.jpeg',
+    parentFigure: {
+      id: 'fig-sw-morgan-elsbeth-retro',
+      name: 'Morgan Elsbeth (The Retro Collection)',
+      code: 'F8376',
+      imageUrl: '/cardback_placeholder.jpeg',
+      lineName: 'Retro Collection (2019–Present)',
+      franchiseName: 'Star Wars'
+    },
+    associatedVariant: {
+      id: 'var-morgan-elsbeth-std',
+      name: 'Standard Retro Blister Release',
+      distinguishingFeature: 'EAN: 5010996184597 / F8376'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'Retro Collection (2019–Present)'
+  },
+  {
+    id: 'rel-sw-luke-stormtrooper-potf2-red',
+    name: 'Luke Skywalker (in Stormtrooper Disguise) — Red Card (POTF2)',
+    releaseYear: 1996,
+    releaseDate: '1996-06-01',
+    language: 'English',
+    packagingType: 'Blister Cardback (Red Card / Proof of Purchase)',
+    barcode: '076281695732',
+    assortmentNumber: 'No. 69573 / 69570 ASST.',
+    region: 'North America / Global',
+    retailerExclusivity: 'General Retail',
+    collectorNotes: '1996 Kenner POTF2 Red Card release of Luke in Stormtrooper Disguise with removable helmet and blaster rifle. Proof of Purchase UPC: 076281695732.',
+    imageUrl: '/cardback_placeholder.jpeg',
+    parentFigure: {
+      id: 'fig-sw-luke-stormtrooper-potf2',
+      name: 'Luke Skywalker (in Stormtrooper Disguise)',
+      code: 'POTF2-69573',
+      imageUrl: '/cardback_placeholder.jpeg',
+      lineName: 'The Power of the Force 2 (1995–2000)',
+      franchiseName: 'Star Wars'
+    },
+    associatedVariant: {
+      id: 'var-luke-stormtrooper-red-std',
+      name: 'Red Card Blister Release',
+      distinguishingFeature: 'UPC: 076281695732 / Red Card'
+    },
+    franchiseName: 'Star Wars',
+    lineName: 'The Power of the Force 2 (1995–2000)'
+  },
   {
     id: 'rel-vader-potf2-us-red',
     name: 'Darth Vader — 1995 POTF2 US Red Card Blister',

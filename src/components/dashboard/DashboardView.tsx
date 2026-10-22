@@ -11,7 +11,6 @@ import {
   DollarSign, 
   TrendingUp, 
   Sparkles, 
-  ScanBarcode, 
   Cpu, 
   Database, 
   ArrowRight, 
@@ -20,13 +19,14 @@ import {
   Layers, 
   Award,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  PackageCheck
 } from 'lucide-react';
 import { useLanguage } from '../../contexts/LanguageContext';
 
 interface DashboardViewProps {
   onNavigateEntity: (type: EntityType, id: string) => void;
-  onSelectView: (view: 'dashboard' | 'collection' | 'databank' | 'wishlist' | 'ai_identify' | 'scan_barcode' | 'profile') => void;
+  onSelectView: (view: 'dashboard' | 'collection' | 'databank' | 'wishlist' | 'ai_identify' | 'profile') => void;
   onOpenAddModal: () => void;
   currentUser: { name: string; email: string } | null;
 }
@@ -76,7 +76,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </h1>
 
             <p className="text-sm text-slate-300 leading-relaxed">
-              {t('dashboard.welcome_subtitle', 'Your authoritative hub for action figure archiving. Track conditions, inspect variants, scan commercial barcodes, and run AI visual appraisals.')}
+              {t('dashboard.welcome_subtitle', 'Your authoritative hub for action figure archiving. Track conditions, inspect variants, and identify figures instantly with Google Lens AI.')}
             </p>
           </div>
 
@@ -94,20 +94,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               variant="outline"
               size="md"
               className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-              icon={<ScanBarcode className="w-4 h-4 text-amber-400" />}
-              onClick={() => onSelectView('scan_barcode')}
-            >
-              {t('nav.scan_barcode', 'Scan Barcode')}
-            </CbButton>
-
-            <CbButton
-              variant="outline"
-              size="md"
-              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-              icon={<Cpu className="w-4 h-4" />}
+              icon={<Sparkles className="w-4 h-4 text-cyan-400" />}
               onClick={() => onSelectView('ai_identify')}
             >
-              {t('nav.ai_identify', 'AI Identify')}
+              Google Lens (IA)
             </CbButton>
           </div>
         </div>
@@ -220,24 +210,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <CbCard
           interactive
-          onClick={() => onSelectView('scan_barcode')}
-          className="p-5 border-amber-500/30 bg-amber-50/20 dark:bg-amber-950/10 hover:border-amber-500 flex flex-col justify-between group"
+          onClick={() => onSelectView('collection')}
+          className="p-5 border-emerald-500/30 bg-emerald-50/20 dark:bg-emerald-950/10 hover:border-emerald-500 flex flex-col justify-between group"
         >
           <div className="space-y-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-              <ScanBarcode className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <PackageCheck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                {t('dashboard.barcode_title', 'Cardback Barcode Scanner')}
+              <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                {t('nav.collection', 'El meu Inventari & Col·lecció')}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                {t('dashboard.barcode_description', 'Scan UPC barcodes on cardbacks and packaging to reveal regional release history, assortment numbers, and variants.')}
+                {t('dashboard.collection_description', 'Gestiona el teu inventari personal, estats de conservació (MOC, Loose, Graded), preus de compra i valor estimat.')}
               </p>
             </div>
           </div>
-          <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-amber-600 dark:text-amber-400 font-semibold">
-            <span>{t('dashboard.barcode_action', 'Scan UPC Barcode')}</span>
+          <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs text-emerald-600 dark:text-emerald-400 font-semibold">
+            <span>{t('dashboard.view_collection', 'Veure Col·lecció')}</span>
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </div>
         </CbCard>
@@ -286,9 +276,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="space-y-2.5">
-            {topValuedFigures.map(item => (
+            {topValuedFigures.map((item, idx) => (
               <div
-                key={item.id}
+                key={`${item.id}-${idx}`}
                 onClick={() => onNavigateEntity('figure', item.figureId)}
                 className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-amber-500/60 flex items-center justify-between gap-3 cursor-pointer group transition-colors"
               >
@@ -339,8 +329,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="space-y-3 p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-            {stats.lineBreakdown.slice(0, 4).map(line => (
-              <div key={line.lineName} className="space-y-1.5">
+            {stats.lineBreakdown.slice(0, 4).map((line, lIdx) => (
+              <div key={`${line.lineName}-${lIdx}`} className="space-y-1.5">
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-slate-800 dark:text-slate-200">
                     {line.lineName}

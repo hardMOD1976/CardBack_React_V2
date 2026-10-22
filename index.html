@@ -31,6 +31,29 @@
             document.documentElement.style.colorScheme = 'light';
           }
         } catch (e) {}
+
+        // Suppress Vite HMR WebSocket connection failure in proxy / cloud preview environments
+        window.addEventListener('unhandledrejection', function(event) {
+          try {
+            var reason = event && event.reason;
+            var msg = reason ? (typeof reason === 'string' ? reason : (reason.message || String(reason))) : '';
+            var stack = (reason && reason.stack) ? String(reason.stack) : '';
+            if (msg.includes('WebSocket') || msg.includes('ws://') || msg.includes('wss://') || stack.includes('@vite/client') || msg.includes('closed without opened')) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+            }
+          } catch (e) {}
+        }, true);
+        window.addEventListener('error', function(event) {
+          try {
+            var msg = event ? (event.message || String(event)) : '';
+            var filename = event && event.filename ? String(event.filename) : '';
+            if ((typeof msg === 'string' && (msg.includes('WebSocket') || msg.includes('closed without opened'))) || filename.includes('@vite/client')) {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+            }
+          } catch (e) {}
+        }, true);
       })();
     </script>
   </head>

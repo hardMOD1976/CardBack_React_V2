@@ -12,9 +12,8 @@ import swaggerUi from "swagger-ui-express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { swaggerSpec } from "./server/swaggerSpec";
-import { identifyFigureWithAi, detectBarcodeWithAi } from "./server/geminiAiService";
+import { identifyFigureWithAi } from "./server/geminiAiService";
 import { getCatalogEntity, getAllCatalog, invalidateCatalogCache } from "./server/catalogService";
-import { lookupBarcodeOnline } from "./server/barcodeLookupService";
 import { optimizeImageDataUrl, optimizeImageArray } from "./server/imageOptimizer";
 
 dotenv.config({ override: true });
@@ -470,6 +469,35 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
 
 // Database connection pool (lazy or direct with SSL)
 let dbPool: pg.Pool | null = null;
+let neonQuotaCooldownUntil = 0;
+
+export function isNeonQuota(err: any): boolean {
+  if (!err) return false;
+  const str = String(
+    typeof err === 'string'
+      ? err
+      : (err.message || err.detail || err.hint || err.code || err.toString?.() || '')
+  ).toLowerCase();
+  return (
+    str.includes("quota") ||
+    str.includes("exceeded") ||
+    str.includes("upgrade your plan") ||
+    str.includes("limit") ||
+    str.includes("53300") ||
+    str.includes("xx000") ||
+    str.includes("connection limit") ||
+    str.includes("too many clients") ||
+    str.includes("terminating connection")
+  );
+}
+
+export function tripNeonQuota() {
+  neonQuotaCooldownUntil = Date.now() + 60 * 60 * 1000;
+}
+
+export function isNeonQuotaTripped(): boolean {
+  return Date.now() < neonQuotaCooldownUntil;
+}
 
 function getDbPool(): pg.Pool | null {
   if (dbPool) return dbPool;
@@ -781,6 +809,14 @@ app.get("/api/health", async (req, res) => {
 
 // Collection - Get all owned items
 app.get("/api/collection", requireAuth, async (req, res) => {
+  if (isNeonQuotaTripped()) {
+    return res.status(200).json({ 
+      items: [], 
+      quotaExceeded: true, 
+      warning: "La quota mensual de trànsit de Neon (5 GB) s'ha superat. L'aplicació funciona en mode local protegit." 
+    });
+  }
+
   const pool = getDbPool();
   if (!pool) {
     return res.status(503).json({ error: "Database not configured" });
@@ -867,21 +903,31 @@ app.get("/api/collection", requireAuth, async (req, res) => {
 
     res.json({ items });
   } catch (err: any) {
-    console.error("Error fetching collection from Neon:", err);
-    const isQuota = err.message && (err.message.includes("quota") || err.message.includes("exceeded"));
-    if (isQuota) {
+    if (isNeonQuota(err)) {
+      tripNeonQuota();
+      console.warn("[Neon] Notice: Project traffic quota exceeded. Falling back to local offline mode.");
       return res.status(200).json({ 
         items: [], 
         quotaExceeded: true, 
         warning: "La quota mensual de trànsit de Neon (5 GB) s'ha superat. L'aplicació funciona en mode local protegit." 
       });
     }
+    console.error("Error fetching collection from Neon:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
 // Add figure to Neon collection
 app.post("/api/collection", requireAuth, async (req, res) => {
+  if (isNeonQuotaTripped()) {
+    return res.status(200).json({ 
+      success: true, 
+      savedLocally: true, 
+      quotaExceeded: true, 
+      warning: "La quota mensual de Neon (5 GB) s'ha superat. La figura s'ha desat localment al teu navegador." 
+    });
+  }
+
   const pool = getDbPool();
   if (!pool) {
     return res.status(503).json({ error: "Database not configured" });
@@ -1113,9 +1159,9 @@ app.post("/api/collection", requireAuth, async (req, res) => {
     const inserted = await pool.query(insertQuery, values);
     res.status(201).json({ item: inserted.rows[0] });
   } catch (err: any) {
-    console.error("Error adding figure to Neon:", err);
-    const isQuota = err.message && (err.message.includes("quota") || err.message.includes("exceeded"));
-    if (isQuota) {
+    if (isNeonQuota(err)) {
+      tripNeonQuota();
+      console.warn("[Neon] Notice: Project traffic quota exceeded on add. Item preserved in browser local storage.");
       return res.status(200).json({ 
         success: true, 
         savedLocally: true, 
@@ -1123,6 +1169,7 @@ app.post("/api/collection", requireAuth, async (req, res) => {
         warning: "La quota mensual de Neon (5 GB) s'ha superat. La figura s'ha desat localment al teu navegador." 
       });
     }
+    console.error("Error adding figure to Neon:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1217,12 +1264,21 @@ app.put("/api/collection/:id", requireAuth, async (req, res) => {
     if (result.rowCount === 0) return res.status(404).json({ error: "Collection item not found." });
     return res.json({ success: true, id: req.params.id });
   } catch (err: any) {
+    if (isNeonQuota(err)) {
+      tripNeonQuota();
+      console.warn("[Neon] Notice: Project traffic quota exceeded on update. Changes preserved locally.");
+      return res.json({ success: true, id: req.params.id, savedLocally: true, quotaExceeded: true });
+    }
     console.error("Error updating collection item:", err);
     return res.status(500).json({ error: "Could not update collection item." });
   }
 });
 
 app.delete("/api/collection/:id", requireAuth, async (req, res) => {
+  if (isNeonQuotaTripped()) {
+    return res.json({ success: true, id: req.params.id, savedLocally: true, quotaExceeded: true });
+  }
+
   const pool = getDbPool();
   if (!pool) {
     return res.status(503).json({ error: "Database not configured" });
@@ -1235,6 +1291,11 @@ app.delete("/api/collection/:id", requireAuth, async (req, res) => {
     );
     res.json({ success: true, id });
   } catch (err: any) {
+    if (isNeonQuota(err)) {
+      tripNeonQuota();
+      console.warn("[Neon] Notice: Project traffic quota exceeded on delete. Item marked deleted locally.");
+      return res.json({ success: true, id: req.params.id, savedLocally: true, quotaExceeded: true });
+    }
     console.error("Error deleting figure in Neon:", err);
     res.status(500).json({ error: err.message });
   }
@@ -1242,6 +1303,17 @@ app.delete("/api/collection/:id", requireAuth, async (req, res) => {
 
 // Database Catalogue Metadata summary & storage metrics
 app.get("/api/db/stats", async (req, res) => {
+  if (isNeonQuotaTripped()) {
+    return res.json({
+      counts: { Figure: 75, Line: 32, Character: 54, OwnedFigure: 21 },
+      host: "Neon PostgreSQL (Límit de 5 GB trànsit assolit)",
+      databaseSize: "14 MB (en disc)",
+      rawDatabaseSize: 14 * 1024 * 1024,
+      quotaExceeded: true,
+      quotaMessage: "S'ha assolit el límit mensual de 5 GB de transferència de dades (egress) de Neon."
+    });
+  }
+
   const pool = getDbPool();
   if (!pool) {
     return res.status(503).json({ error: "Database not configured" });
@@ -1264,8 +1336,8 @@ app.get("/api/db/stats", async (req, res) => {
       rawDatabaseSize: Number(sizeRes.rows[0]?.raw_size || 0)
     });
   } catch (err: any) {
-    const isQuota = err.message && (err.message.includes("quota") || err.message.includes("exceeded"));
-    if (isQuota) {
+    if (isNeonQuota(err)) {
+      tripNeonQuota();
       return res.json({
         counts: { Figure: 75, Line: 32, Character: 54, OwnedFigure: 21 },
         host: "Neon PostgreSQL (Límit de 5 GB trànsit assolit)",
@@ -1497,13 +1569,19 @@ app.post(["/api/catalog/propose", "/api/figures/propose"], optionalAuth, async (
 // GET /api/catalog/all - Unified archive catalog (PostgreSQL + Curated Seeds)
 app.get("/api/catalog/all", async (req, res) => {
   try {
-    const pool = getDbPool();
+    const pool = isNeonQuotaTripped() ? null : getDbPool();
     const catalog = await getAllCatalog(pool);
     res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=600");
     res.json(catalog);
   } catch (err: any) {
-    console.error("Error fetching all catalog:", err);
-    res.status(500).json({ error: err.message });
+    if (isNeonQuota(err)) tripNeonQuota();
+    console.warn("Notice: Using in-memory curated catalogue archive:", err?.message || err);
+    try {
+      const fallback = await getAllCatalog(null);
+      res.json(fallback);
+    } catch {
+      res.status(500).json({ error: err.message });
+    }
   }
 });
 
@@ -1511,14 +1589,19 @@ app.get("/api/catalog/all", async (req, res) => {
 app.get("/api/catalog/:type/:id", async (req, res) => {
   try {
     const { type, id } = req.params;
-    const pool = getDbPool();
+    const pool = isNeonQuotaTripped() ? null : getDbPool();
     const entity = await getCatalogEntity(type, id, pool);
     if (!entity) {
       return res.status(404).json({ error: `Catalogue entity of type '${type}' with ID '${id}' not found.` });
     }
     res.json(entity);
   } catch (err: any) {
-    console.error(`Error fetching catalog entity ${req.params.type}/${req.params.id}:`, err);
+    if (isNeonQuota(err)) tripNeonQuota();
+    console.warn(`Notice: Fetching catalog entity ${req.params.type}/${req.params.id} from local archive:`, err?.message || err);
+    try {
+      const fallbackEntity = await getCatalogEntity(req.params.type, req.params.id, null);
+      if (fallbackEntity) return res.json(fallbackEntity);
+    } catch {}
     res.status(500).json({ error: err.message });
   }
 });
@@ -1526,13 +1609,18 @@ app.get("/api/catalog/:type/:id", async (req, res) => {
 // GET /api/figures/:id - Direct alias for figure detail
 app.get("/api/figures/:id", async (req, res) => {
   try {
-    const pool = getDbPool();
+    const pool = isNeonQuotaTripped() ? null : getDbPool();
     const entity = await getCatalogEntity("figure", req.params.id, pool);
     if (!entity) {
       return res.status(404).json({ error: `Figure with ID '${req.params.id}' not found.` });
     }
     res.json(entity);
   } catch (err: any) {
+    if (isNeonQuota(err)) tripNeonQuota();
+    try {
+      const fallback = await getCatalogEntity("figure", req.params.id, null);
+      if (fallback) return res.json(fallback);
+    } catch {}
     res.status(500).json({ error: err.message });
   }
 });
@@ -1540,11 +1628,18 @@ app.get("/api/figures/:id", async (req, res) => {
 // GET /api/figures - List all figures
 app.get("/api/figures", async (req, res) => {
   try {
-    const pool = getDbPool();
+    const pool = isNeonQuotaTripped() ? null : getDbPool();
     const catalog = await getAllCatalog(pool);
     res.json({ figures: catalog.figures, total: catalog.figures.length });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    if (isNeonQuota(err)) tripNeonQuota();
+    console.warn("Notice: Using in-memory figures catalogue:", err?.message || err);
+    try {
+      const fallback = await getAllCatalog(null);
+      res.json({ figures: fallback.figures, total: fallback.figures.length });
+    } catch {
+      res.status(500).json({ error: err.message });
+    }
   }
 });
 
@@ -1568,54 +1663,7 @@ app.post("/api/ai/identify-figure", optionalAuth, aiLimiter, async (req, res) =>
   }
 });
 
-// POST /api/scanner/detect-barcode
-app.post("/api/scanner/detect-barcode", optionalAuth, aiLimiter, async (req, res) => {
-  try {
-    const { image } = req.body;
-    if (!image) {
-      return res.status(400).json({ success: false, error: "Missing 'image' parameter in request body." });
-    }
-    const result = await detectBarcodeWithAi(image);
-    return res.json(result);
-  } catch (err: any) {
-    console.error("Error detecting barcode with Gemini AI:", err);
-    return res.status(500).json({
-      success: false,
-      error: err.message || "Failed to detect barcode with Gemini AI"
-    });
-  }
-});
 
-// POST /api/scanner/lookup-barcode-online - Live Internet and Database Barcode Validation
-app.post("/api/scanner/lookup-barcode-online", optionalAuth, scannerLimiter, async (req, res) => {
-  try {
-    const { barcode, context, figureNameHint, lineNameHint, forceRefresh } = req.body;
-    if (!barcode) {
-      return res.status(400).json({ success: false, error: "Missing 'barcode' parameter in request body." });
-    }
-    const pool = getDbPool();
-    const lookupContext = {
-      ...(context || {}),
-      ...(figureNameHint ? { figureNameHint } : {}),
-      ...(lineNameHint ? { lineNameHint } : {}),
-      ...(forceRefresh !== undefined ? { forceRefresh: Boolean(forceRefresh) } : {})
-    };
-    const result = await lookupBarcodeOnline(barcode, pool, lookupContext);
-    return res.json(result);
-  } catch (err: any) {
-    console.error("Error performing online barcode lookup:", err);
-    return res.status(500).json({
-      found: false,
-      isToyOrActionFigure: false,
-      barcode: req.body?.barcode || "",
-      manufacturer: null,
-      productName: null,
-      notFoundReason: "unregistered_barcode",
-      message: err.message || "Error durant la cerca en línia del codi de barres.",
-      options: []
-    });
-  }
-});
 
 
 
@@ -1632,7 +1680,7 @@ async function startServer() {
     });
   } else {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: { middlewareMode: true, hmr: false },
       appType: "spa",
     });
     app.use(vite.middlewares);

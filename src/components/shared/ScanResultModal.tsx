@@ -5,7 +5,6 @@ import { CbButton } from './CbButton';
 import { Badge } from './Badge';
 import { getFigureImageUrl, handleImageError } from '../../utils/imageFallback';
 import { 
-  Barcode, 
   Cpu, 
   Sparkles, 
   Eye, 
@@ -34,7 +33,7 @@ export interface ScanResultOption {
 export interface ScanResultModalProps {
   isOpen: boolean;
   onClose: () => void;
-  mode: 'barcode' | 'ai';
+  mode?: 'barcode' | 'ai';
   // Identified Figure Data
   figure: FigureDetailResponseDto | null;
   release?: ProductReleaseDetailResponseDto | null;
@@ -150,14 +149,10 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
             <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
               isNotFound
                 ? 'bg-rose-500/10 text-rose-500'
-                : mode === 'barcode' 
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' 
-                  : 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400'
             }`}>
               {isNotFound ? (
                 <PackageX className="w-5 h-5" />
-              ) : mode === 'barcode' ? (
-                <Barcode className="w-5 h-5" />
               ) : (
                 <Sparkles className="w-5 h-5" />
               )}
@@ -166,17 +161,13 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
               <h2 id="modal-headline" className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 font-display">
                 {isNotFound
                   ? t('ai.not_found_title', 'No catalogue match')
-                  : mode === 'barcode'
-                    ? t('nav.scan_barcode', 'Barcode scan results')
-                    : t('ai.results_modal', 'AI identification results')
+                  : t('ai.results_modal', 'Resultat del reconeixement Google Lens (IA)')
                 }
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 {isNotFound
                   ? t('ai.non_toy', 'This item is not a catalogued collectible')
-                  : mode === 'barcode'
-                    ? t('scanner.release_record', 'Code checked against the packaging catalogue')
-                    : t('ai.identification', 'Image analysis and figure identification')
+                  : t('ai.identification', 'Identificació neuronal de motlle, variant i edició')
                 }
               </p>
             </div>
@@ -307,9 +298,7 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
                   <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
                           <span className="flex items-center gap-1.5">
                       <Layers className="w-3.5 h-3.5 text-blue-500" />
-                      {mode === 'barcode' 
-                        ? `Variacions de packaging d'aquest codi (${options.length})`
-                        : `Opcions d'identificació trobades (${options.length})`}
+                      {`Opcions d'identificació trobades (${options.length})`}
                     </span>
                     <span className="text-[10px] text-slate-400 font-normal">
                       {t('ai.options_found', 'Select an option')}
@@ -317,11 +306,11 @@ export const ScanResultModal: React.FC<ScanResultModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {options.map((opt) => {
+                    {options.map((opt, optIdx) => {
                       const isSelected = selectedOptionId === opt.id;
                       return (
                         <div
-                          key={opt.id}
+                          key={`${opt.id}-${optIdx}`}
                           onClick={() => onSelectOption(opt.id)}
                           className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
                             isSelected

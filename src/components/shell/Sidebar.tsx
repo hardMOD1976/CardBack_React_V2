@@ -4,8 +4,7 @@ import {
   Bookmark, 
   Database, 
   Heart, 
-  Cpu, 
-  ScanBarcode, 
+  Sparkles, 
   User,
   ChevronRight,
   ShieldCheck
@@ -20,7 +19,6 @@ export type MainNavView =
   | 'databank' 
   | 'wishlist' 
   | 'ai_identify' 
-  | 'scan_barcode' 
   | 'profile';
 
 interface SidebarProps {
@@ -68,13 +66,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'ai_identify',
-      label: t('nav.ai_identify', 'AI Identify'),
-      icon: <Cpu className="w-4 h-4" />
-    },
-    {
-      id: 'scan_barcode',
-      label: t('nav.scan_barcode', 'Scan Barcode'),
-      icon: <ScanBarcode className="w-4 h-4" />
+      label: t('nav.ai_identify', 'Google Lens (IA)'),
+      icon: <Sparkles className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
     },
     {
       id: 'profile',

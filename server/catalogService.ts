@@ -562,6 +562,8 @@ export async function getCatalogEntity(
  * Loads all catalog records from DB and joins them with seeds.
  * Employs server-side caching so repeated client requests consume zero Neon egress.
  */
+let dbQuotaExceededCooldown = 0;
+
 export async function getAllCatalog(pool: pg.Pool | null): Promise<{
   figures: FigureDetailResponseDto[];
   lines: LineDetailResponseDto[];
@@ -587,7 +589,7 @@ export async function getAllCatalog(pool: pg.Pool | null): Promise<{
   FRANCHISES.forEach(fr => franchisesMap.set(fr.id, fr));
   MANUFACTURERS.forEach(m => manufacturersMap.set(m.id, m));
 
-  if (pool) {
+  if (pool && Date.now() > dbQuotaExceededCooldown) {
     try {
       // Query all figures in DB
       const dbFigIds = await pool.query('SELECT id FROM "Figure" WHERE "deletedAt" IS NULL');
@@ -633,8 +635,14 @@ export async function getAllCatalog(pool: pg.Pool | null): Promise<{
           if (detail) manufacturersMap.set(detail.id, detail);
         }
       }
-    } catch (err) {
-      console.error("Error loading catalogue from database:", err);
+    } catch (err: any) {
+      const isQuota = err?.message && (err.message.includes("quota") || err.message.includes("exceeded") || err.message.includes("Upgrade your plan"));
+      if (isQuota) {
+        dbQuotaExceededCooldown = Date.now() + 10 * 60 * 1000;
+        console.warn("[Neon] Notice: Database query quota exceeded. Falling back to built-in catalogue archive.");
+      } else {
+        console.warn("[Neon] Could not query database for catalogue additions:", err.message || err);
+      }
     }
   }
 

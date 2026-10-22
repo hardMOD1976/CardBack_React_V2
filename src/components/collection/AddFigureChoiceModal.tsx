@@ -1,7 +1,6 @@
 import React from 'react';
 import { 
   Sparkles, 
-  ScanBarcode, 
   PlusCircle, 
   Search, 
   X, 
@@ -16,7 +15,6 @@ interface AddFigureChoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
   onChooseAi: () => void;
-  onChooseBarcode: () => void;
   onChooseManual: () => void;
   onChooseCatalogue: () => void;
 }
@@ -25,7 +23,6 @@ export const AddFigureChoiceModal: React.FC<AddFigureChoiceModalProps> = ({
   isOpen,
   onClose,
   onChooseAi,
-  onChooseBarcode,
   onChooseManual,
   onChooseCatalogue
 }) => {
@@ -77,42 +74,17 @@ export const AddFigureChoiceModal: React.FC<AddFigureChoiceModalProps> = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="font-bold text-sm text-slate-900 dark:text-slate-100 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
-                  {t('collection.choice_ai_title', 'Reconeixement fotogràfic amb IA')}
+                  {t('collection.choice_ai_title', 'Reconeixement fotogràfic amb Google Lens (IA)')}
                 </span>
                 <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 border border-cyan-500/30 uppercase tracking-wider">
-                  {t('collection.choice_ai_badge', 'IA Visual')}
+                  {t('collection.choice_ai_badge', 'Google Lens')}
                 </span>
               </div>
               <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                {t('collection.choice_ai_desc', 'Fes una foto o carrega una imatge de la teva figura. La IA n\'identificarà el personatge, fabricant, variant i estat.')}
+                {t('collection.choice_ai_desc', 'Fes una foto o carrega una imatge de la teva figura. La IA n\'identificarà el personatge, fabricant, variant i estat a l\'instant.')}
               </p>
             </div>
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-cyan-500 group-hover:translate-x-0.5 transition-all shrink-0 self-center" />
-          </button>
-
-          {/* Option 2: Barcode Scanner */}
-          <button
-            type="button"
-            onClick={onChooseBarcode}
-            className="w-full text-left p-4 rounded-xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 to-transparent hover:from-emerald-500/20 hover:border-emerald-500/50 transition-all flex items-start gap-3.5 group cursor-pointer shadow-xs"
-          >
-            <div className="w-11 h-11 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30 group-hover:scale-105 transition-transform">
-              <ScanBarcode className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="font-bold text-sm text-slate-900 dark:text-slate-100 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 transition-colors">
-                  {t('collection.choice_barcode_title', 'Escàner de codi de barres')}
-                </span>
-                <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 uppercase tracking-wider">
-                  {t('collection.choice_barcode_badge', 'Ràpid')}
-                </span>
-              </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
-                {t('collection.choice_barcode_desc', 'Apunta amb la càmera del mòbil al codi de barres del blíster o de la caixa per trobar la figura al catàleg.')}
-              </p>
-            </div>
-            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-emerald-500 group-hover:translate-x-0.5 transition-all shrink-0 self-center" />
           </button>
 
           {/* Option 3: Manual Entry (Blank Form) */}

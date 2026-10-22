@@ -48,16 +48,10 @@ export const APP_VERSION: VersionInfo = {
       tags: ['Perfil', 'Mode Clar/Fosc', 'Kenner 78']
     },
     {
-      title: 'Escàner de codis de barres (Càmera & Foto)',
-      description: 'Disponible des del menú lateral i des de "Afegir figura". Suporta lectura per càmera web/mòbil o pujada d\'imatge, amb desxiframent d\'assortiments Kenner (p. ex. #69570).',
+      title: 'Reconeixement fotogràfic amb Google Lens (IA)',
+      description: 'Analitza qualsevol fotografia d\'una figura, motlle o blíster per detectar el personatge, variant, accessoris originals i valoració de mercat en segons.',
       status: 'ready',
-      tags: ['Codi de barres', 'Càmera mòbil', 'Hardware Barcode']
-    },
-    {
-      title: 'Reconeixement de figures amb Gemini Vision IA',
-      description: 'Analitza qualsevol fotografia d\'una figura o blíster per detectar el personatge, línia, accessoris originals i valoració de mercat en segons.',
-      status: 'ready',
-      tags: ['Visió IA', 'Multimodal', 'Gemini Flash']
+      tags: ['Google Lens', 'Visió IA', 'Multimodal']
     }
   ],
   changelog: [
