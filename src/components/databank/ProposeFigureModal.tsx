@@ -139,8 +139,8 @@ export const ProposeFigureModal: React.FC<ProposeFigureModalProps> = ({
               body: JSON.stringify({ image: compressed }),
             });
             if (uploadRes.ok) {
-              const uploadData = await uploadRes.json();
-              if (uploadData.url) {
+              const uploadData = await uploadRes.json().catch(() => null);
+              if (uploadData?.url) {
                 finalUrl = uploadData.url;
               }
             }
@@ -221,8 +221,8 @@ export const ProposeFigureModal: React.FC<ProposeFigureModalProps> = ({
           body: JSON.stringify(payload)
         });
         if (res.ok) {
-          const data = await res.json();
-          serverFigure = data.figure;
+          const data = await res.json().catch(() => null);
+          serverFigure = data?.figure;
         } else {
           const errData = await res.json().catch(() => ({}));
           console.warn('Backend catalog propose returned non-ok:', errData?.error || res.statusText);

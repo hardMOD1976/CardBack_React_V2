@@ -71,9 +71,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     try {
       const res = await fetch('/api/db/stats');
       if (res.ok) {
-        const data = await res.json();
-        if (data.databaseSize) {
-          setDbStorageInfo({ size: data.databaseSize, raw: data.rawDatabaseSize, counts: data.counts });
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json().catch(() => null);
+          if (data && data.databaseSize) {
+            setDbStorageInfo({ size: data.databaseSize, raw: data.rawDatabaseSize, counts: data.counts });
+          }
         }
       }
     } catch {
@@ -94,8 +97,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         method: 'POST',
         headers: { Authorization: `Bearer ${localStorage.getItem('cb_token') || ''}` }
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Optimization failed');
+      const contentType = res.headers.get('content-type') || '';
+      const data = contentType.includes('application/json') ? await res.json().catch(() => null) : null;
+      if (!res.ok || !data) throw new Error(data?.error || 'Optimization failed');
       setOptimizeSuccess(t('seed.optimize_success', 'Base de dades Neon optimitzada i compactada correctament!'));
       await loadDbStats();
     } catch (err: any) {
@@ -121,8 +125,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setIsChangingPassword(true);
     try {
       const response = await fetch('/api/auth/password/change', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ currentPassword, newPassword }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Could not change password.');
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
+      if (!response.ok || !data) throw new Error(data?.error || 'Could not change password.');
       setCurrentPassword(''); setNewPassword(''); setConfirmNewPassword(''); setPasswordMessage(t('auth.password_changed', 'Password changed successfully.'));
     } catch (error: any) { setPasswordError(error.message || 'Could not change password.'); }
     finally { setIsChangingPassword(false); }
@@ -134,9 +139,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setSeedError(null);
     try {
       const res = await fetch('/api/db/seed/star-wars', { method: 'POST', headers: { Authorization: `Bearer ${localStorage.getItem('cb_token') || ''}` } });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(t('seed.error', 'Could not load the catalogue into the database.'));
+      const contentType = res.headers.get('content-type') || '';
+      const data = contentType.includes('application/json') ? await res.json().catch(() => null) : null;
+      if (!res.ok || !data) {
+        throw new Error(data?.error || t('seed.error', 'Could not load the catalogue into the database.'));
       }
       setSeedResult(data);
       // Synchronize in-memory catalogue with freshly seeded figures

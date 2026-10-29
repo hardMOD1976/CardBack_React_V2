@@ -27,6 +27,7 @@ import {
   EntityType,
   FigureSummaryDto
 } from '../types/domain';
+import { CollectionService } from './collectionService';
 
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('cb_token') || ''}` });
 
@@ -91,7 +92,10 @@ export async function syncCatalogueWithServer(force = false): Promise<boolean> {
   try {
     const res = await fetch('/api/catalog/all');
     if (res.ok) {
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) return true;
+      const data = await res.json().catch(() => null);
+      if (!data) return true;
       
       if (Array.isArray(data.figures)) {
         const figMap = new Map(figuresStore.map(f => [f.id, f]));
@@ -332,6 +336,17 @@ export const ApiService = {
     };
   },
 
+  registerFigure(figure: FigureDetailResponseDto): void {
+    if (!figure || !figure.id) return;
+    entityCache.set(`figure:${figure.id}`, figure);
+    const existingIndex = figuresStore.findIndex(f => f.id === figure.id);
+    if (existingIndex >= 0) {
+      figuresStore[existingIndex] = { ...figuresStore[existingIndex], ...figure };
+    } else {
+      figuresStore.push(figure);
+    }
+  },
+
   getFigureDetail(id: string): FigureDetailResponseDto | null {
     const key = `figure:${id}`;
     if (entityCache.has(key)) return entityCache.get(key);
@@ -340,6 +355,67 @@ export const ApiService = {
       entityCache.set(key, found);
       return found;
     }
+
+    // Check if this figure exists in the user's collection (e.g. added via Lens, custom, or databank)
+    try {
+      const owned = CollectionService.getAll().find(i => i.figureId === id || i.id === id);
+      if (owned) {
+        const synthesized: FigureDetailResponseDto = {
+          id: owned.figureId || owned.id,
+          name: owned.figureName,
+          code: owned.figureCode || 'COLL-RECORD',
+          year: parseInt(owned.acquisitionDate?.substring(0, 4) || '1985', 10) || 1985,
+          description: owned.collectorNotes || `Figura de la col·lecció: ${owned.figureName}`,
+          imageUrl: owned.figureImageUrl || (owned.images && owned.images[0]) || '/cardback_placeholder.jpeg',
+          images: Array.isArray(owned.images) && owned.images.length > 0 ? owned.images : [owned.figureImageUrl || '/cardback_placeholder.jpeg'],
+          line: {
+            id: owned.lineId || 'line-custom',
+            name: owned.lineName || 'Col·lecció',
+            manufacturerName: owned.manufacturerName || 'Hasbro',
+            startYear: parseInt(owned.acquisitionDate?.substring(0, 4) || '1985', 10) || 1985,
+            scale: '3.75"'
+          },
+          franchise: {
+            id: owned.franchiseId || 'franchise-custom',
+            name: owned.franchiseName || 'General'
+          },
+          character: {
+            id: `char-${(owned.figureId || owned.id).toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
+            name: owned.figureName,
+            description: owned.collectorNotes || owned.figureName,
+            imageUrl: owned.figureImageUrl || '/cardback_placeholder.jpeg'
+          },
+          sculptDetails: 'Matriu de producció original',
+          articulationPoints: 5,
+          originalAccessories: [],
+          variants: owned.variantName ? [{
+            id: owned.variantId || 'var-1',
+            figureId: owned.figureId || owned.id,
+            figureName: owned.figureName,
+            name: owned.variantName,
+            distinguishingFeature: 'Variant del col·leccionista',
+            isRare: false,
+            imageUrl: owned.figureImageUrl || '/cardback_placeholder.jpeg'
+          }] : [],
+          productReleases: owned.releasePackaging ? [{
+            id: owned.productReleaseId || 'rel-1',
+            name: `${owned.figureName} (${owned.releasePackaging})`,
+            figureId: owned.figureId || owned.id,
+            variantId: owned.variantId || 'var-1',
+            packagingType: owned.releasePackaging,
+            region: 'Global',
+            releaseYear: parseInt(owned.acquisitionDate?.substring(0, 4) || '1985', 10) || 1985,
+            imageUrl: owned.figureImageUrl || '/cardback_placeholder.jpeg'
+          }] : []
+        };
+        entityCache.set(key, synthesized);
+        figuresStore.push(synthesized);
+        return synthesized;
+      }
+    } catch (e) {
+      console.warn('Error synthesizing figure from collection:', e);
+    }
+
     return null;
   },
 
@@ -584,14 +660,19 @@ export const ApiService = {
     try {
       const res = await fetch(`/api/catalog/${type}/${encodeURIComponent(id)}`);
       if (res.ok) {
-        const data = await res.json();
-        entityCache.set(cacheKey, data);
-        if (type === 'figure') {
-          if (!figuresStore.some(f => f.id === data.id)) {
-            figuresStore.push(data);
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const data = await res.json().catch(() => null);
+          if (data && data.item) {
+            entityCache.set(cacheKey, data.item);
+            if (type === 'figure') {
+              if (!figuresStore.some(f => f.id === data.item.id)) {
+                figuresStore.push(data.item);
+              }
+            }
+            return data.item;
           }
         }
-        return data;
       }
     } catch (err) {
       console.error(`Failed to fetch ${type}/${id} from server:`, err);
@@ -808,9 +889,16 @@ export const ApiService = {
         headers: { ...authHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ image: imageBase64OrUrl })
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to identify figure');
+      const contentType = res.headers.get('content-type') || '';
+      let data: any = null;
+      if (contentType.includes('application/json')) {
+        data = await res.json().catch(() => null);
+      } else {
+        const text = await res.text().catch(() => '');
+        console.warn('API /api/ai/identify-figure returned non-JSON response:', text.slice(0, 100));
+      }
+      if (!res.ok || !data || !data.success) {
+        throw new Error(data?.error || data?.message || "No s'ha pogut processar la fotografia amb el servei de visió intel·ligent. Si us plau, torna-ho a provar.");
       }
       return data;
     } catch (err: any) {

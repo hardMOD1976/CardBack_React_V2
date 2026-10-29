@@ -79,8 +79,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
         ? { username, email, displayName, password }
         : screen === 'reset' ? { token: resetToken, password } : { usernameOrEmail: usernameOrEmail.trim(), password };
       const response = await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || t('auth.login_failed', 'Sign-in failed. Please try again.'));
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
+      if (!response.ok || !data) throw new Error(data?.error || t('auth.login_failed', 'Sign-in failed. Please try again.'));
       if (screen === 'reset') {
         window.history.replaceState({}, '', window.location.pathname + window.location.hash);
         setScreen('login'); setPassword(''); setConfirmPassword(''); setNoticeMessage(t('auth.reset_success', 'Password updated. You can now sign in.'));
@@ -104,8 +105,9 @@ export const LoginView: React.FC<LoginViewProps> = ({
           theme: mode,
         }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(response.status === 503 ? t('auth.recovery_unavailable', 'Password recovery email is not configured yet.') : (data.error || 'Could not process the recovery request.'));
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
+      if (!response.ok) throw new Error(response.status === 503 ? t('auth.recovery_unavailable', 'Password recovery email is not configured yet.') : (data?.error || 'Could not process the recovery request.'));
       setNoticeMessage(t('auth.recovery_sent', 'If an account exists for that email, a reset link will be sent shortly.'));
     } catch (err: any) { setErrorMessage(err.message || 'Could not process the recovery request.'); }
     finally { setIsLoading(false); }

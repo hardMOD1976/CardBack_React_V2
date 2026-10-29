@@ -72,7 +72,12 @@ export default function App() {
     if (!hasConsented) { setIsCheckingSession(false); return; }
     const legacyToken = localStorage.getItem('cb_token');
     fetch('/api/auth/me', { credentials: 'same-origin', headers: legacyToken ? { Authorization: `Bearer ${legacyToken}` } : {} })
-      .then(async response => { if (!response.ok) throw new Error('No active session'); return response.json(); })
+      .then(async response => {
+        if (!response.ok) throw new Error('No active session');
+        const contentType = response.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) throw new Error('Non-JSON response');
+        return response.json();
+      })
       .then(data => {
         const u = data.user;
         const formatted = { id: u.id, name: u.displayName || u.username || u.name || 'Collector', email: u.email || '', role: u.role || 'USER' };
@@ -235,10 +240,19 @@ export default function App() {
   };
 
   const handleSaveToCollection = (data: Omit<OwnedFigure, 'id' | 'addedAt'>) => {
+    let saved: OwnedFigure | null = null;
     if (editingOwnedItem) {
-      CollectionService.updateFigure(editingOwnedItem.id, data);
+      saved = CollectionService.updateFigure(editingOwnedItem.id, data);
     } else {
-      CollectionService.addFigure(data);
+      saved = CollectionService.addFigure(data);
+    }
+    setIsAddModalOpen(false);
+    setEditingOwnedItem(null);
+
+    // Un cop la figura s'ha afegit a la col·lecció, navegar directament a la fitxa de detall de la figura
+    const targetFigureId = saved?.figureId || targetFigureForAdd?.id || data.figureId;
+    if (targetFigureId) {
+      handleNavigateEntity('figure', targetFigureId);
     }
   };
 
@@ -261,7 +275,12 @@ export default function App() {
     const hasConsented = localStorage.getItem('cb_connection_consent') === 'true' || sessionStorage.getItem('cb_connection_consent') === 'true';
     if (hasConsented) {
       fetch('/api/auth/session', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ authTicket, rememberMe }) })
-        .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Could not start session'); return data; })
+        .then(async response => {
+          const contentType = response.headers.get('content-type') || '';
+          const data = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
+          if (!response.ok || !data) throw new Error(data?.error || 'Could not start session');
+          return data;
+        })
         .then((data) => {
           setCurrentUser(formatted);
           localStorage.setItem('cb_user', JSON.stringify(formatted));
@@ -295,8 +314,9 @@ export default function App() {
     if (pendingAuth) {
       try {
         const response = await fetch('/api/auth/session', { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ authTicket: pendingAuth.authTicket, rememberMe: pendingAuth.rememberMe }) });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Could not start session');
+        const contentType = response.headers.get('content-type') || '';
+        const data = contentType.includes('application/json') ? await response.json().catch(() => null) : null;
+        if (!response.ok || !data) throw new Error(data?.error || 'Could not start session');
         setCurrentUser(pendingAuth.user);
         localStorage.setItem('cb_user', JSON.stringify(pendingAuth.user));
         if (data.token) localStorage.setItem('cb_token', data.token);

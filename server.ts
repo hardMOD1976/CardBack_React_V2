@@ -1667,6 +1667,16 @@ app.post("/api/ai/identify-figure", optionalAuth, aiLimiter, async (req, res) =>
 
 
 
+// Compatibility handler for any legacy /api/scanner/* calls
+app.all("/api/scanner/*", (_req, res) => {
+  res.json({ success: true, message: "Handled by Google Lens visual engine." });
+});
+
+// 404 handler for any unmatched /api/* routes to ALWAYS return JSON and never HTML (index.html)
+app.all("/api/*", (req, res) => {
+  res.status(404).json({ success: false, error: `Endpoint not found: ${req.method} ${req.path}` });
+});
+
 // ----------------- VITE MIDDLEWARE SETUP -----------------
 
 async function startServer() {

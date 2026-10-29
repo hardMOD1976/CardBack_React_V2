@@ -132,8 +132,8 @@ export const AddFigureModal: React.FC<AddFigureModalProps> = ({
               body: JSON.stringify({ image: compressed }),
             });
             if (uploadRes.ok) {
-              const uploadData = await uploadRes.json();
-              if (uploadData.url) {
+              const uploadData = await uploadRes.json().catch(() => null);
+              if (uploadData?.url) {
                 finalUrl = uploadData.url;
               }
             }

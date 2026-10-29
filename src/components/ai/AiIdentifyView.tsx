@@ -278,13 +278,14 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
     }
 
     // Synthesize real figure detail matching domain DTO
-    return {
+    const synthesized: FigureDetailResponseDto = {
       id: res.figureId,
       name: res.figureName,
       code: `LENS-${res.year}-${res.figureName.slice(0, 4).toUpperCase()}`,
       year: res.year,
       description: `Identificat per Google Lens (Gemini Vision AI): ${res.figureName} de ${res.lineName} (${res.franchiseName}).`,
       imageUrl: res.imageUrl,
+      images: [res.imageUrl],
       character: {
         id: `char-${res.figureName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`,
         name: res.figureName,
@@ -331,6 +332,8 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
         }
       ]
     };
+    ApiService.registerFigure(synthesized);
+    return synthesized;
   };
 
   const applyOptionAsCurrent = (opt: AiFigureOption) => {
@@ -502,9 +505,15 @@ export const AiIdentifyView: React.FC<AiIdentifyViewProps> = ({
         setFoundOptions([]);
         setIsResultModalOpen(true);
       } else {
-        const errMsg = err?.message?.includes("429") || err?.message?.includes("quota") || err?.message?.includes("RESOURCE_EXHAUSTED")
-          ? "S'ha superat el límit temporal de peticions a la IA (429). Si us plau, espera uns segons i torna-ho a provar."
-          : (err?.message || "No s'ha pogut identificar la figura en aquesta fotografia. Prova amb un altre angle o millor il·luminació.");
+        const rawMsg = err?.message || '';
+        let errMsg = "No s'ha pogut identificar la figura en aquesta fotografia. Prova amb un altre angle o millor il·luminació.";
+        if (rawMsg.includes("429") || rawMsg.includes("quota") || rawMsg.includes("RESOURCE_EXHAUSTED")) {
+          errMsg = "S'ha superat el límit temporal de peticions a la IA (429). Si us plau, espera uns segons i torna-ho a provar.";
+        } else if (rawMsg.includes("Unexpected token") || rawMsg.includes("is not valid JSON") || rawMsg.includes("<!doctype") || rawMsg.includes("<!DOCTYPE")) {
+          errMsg = "Connexió amb el servidor interrompuda temporalment. S'ha restablert la connexió, torna-ho a provar ara.";
+        } else if (rawMsg && !rawMsg.includes("JSON")) {
+          errMsg = rawMsg;
+        }
         setErrorMessage(errMsg);
       }
     } finally {

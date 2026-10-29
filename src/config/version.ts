@@ -18,73 +18,75 @@ export interface VersionInfo {
 }
 
 export const APP_VERSION: VersionInfo = {
-  version: 'v2.5.1',
-  buildDate: '2026-10-03',
+  version: 'v2.7.0',
+  buildDate: '2026-10-23',
   environment: 'Production Cloud Run',
-  releaseTitle: 'Header Lleuger, Tema a Perfil, Persistència i Selector de Portada',
+  releaseTitle: "Navegació Automàtica a Detall, Panell de Propietari, Formulari d'Edició i Múltiples Fotos",
   testableFeatures: [
     {
-      title: 'Creació de figures a mà amb selecció de foto de portada',
-      description: 'A la finestra "Afegir figura a mà", puja fotos i fes clic al botó "Fer portada" o comprova la xapa daurada "Portada". La imatge escollida es desa com a imatge principal tant a la col·lecció com al catàleg.',
+      title: "Navegació Directa a la Fitxa de Detall en Afegir a la Col·lecció",
+      description: "Quan afegeixes una figura a la teva col·lecció (des de Google Lens IA, des del Banc de Dades o des del formulari manual), l'aplicació et redirigeix automàticament a la pàgina de detall de la figura (/detail/figure/:id) perquè puguis revisar-la a l'instant.",
       status: 'updated',
-      tags: ['Col·lecció', 'Formulari a mà', 'Foto Portada']
+      tags: ['Navegació', 'Detall', 'Google Lens', 'Col·lecció']
     },
     {
-      title: 'Persistència garantida de figures afegides',
-      description: 'Les figures que afegeixes a mà persisteixen en recarregar la pàgina (emmagatzematge local persistent i sincronització Neon PostgreSQL) sense desaparèixer mai de la llista.',
-      status: 'updated',
-      tags: ['Persistència', 'Offline-First', 'Base de Dades']
-    },
-    {
-      title: 'Capçalera lleugera i accés directe al logout',
-      description: 'El Header s\'ha desobstruït (eliminat l\'escàner redundant i el commutador de tema) per garantir que la icona d\'usuari i el botó de tancar sessió (logout) estiguin sempre visibles sense scroll horitzontal.',
-      status: 'updated',
-      tags: ['UI', 'Header', 'Logout']
-    },
-    {
-      title: 'Canvi de tema (Clar / Fosc) i Skins des del Perfil',
-      description: 'Ves a "Perfil & Ajustos" per canviar entre Mode Clar i Mode Fosc i triar estils visuals vintage com Kenner \'78 Cardback o Neon \'84 Synthwave.',
-      status: 'updated',
-      tags: ['Perfil', 'Mode Clar/Fosc', 'Kenner 78']
-    },
-    {
-      title: 'Reconeixement fotogràfic amb Google Lens (IA)',
-      description: 'Analitza qualsevol fotografia d\'una figura, motlle o blíster per detectar el personatge, variant, accessoris originals i valoració de mercat en segons.',
+      title: "Panell Exclusiu d'Inventari per al Propietari de la Figura",
+      description: "A la pàgina de detall de la figura, si l'usuari n'és el propietari, apareix un panell destacat amb insígnia de 'Propietari' que mostra el preu de compra, el valor estimat actual, la plusvàlua/revalorització, l'estat de conservació (MOC/Loose/Graded), la data d'adquisició, la quantitat, la ubicació i els comentaris o notes personals del col·leccionista.",
       status: 'ready',
-      tags: ['Google Lens', 'Visió IA', 'Multimodal']
+      tags: ['Propietari', 'Inventari', 'Preu', 'Comentaris', 'Estat']
+    },
+    {
+      title: "Formulari d'Edició Complet de la Figura per al Propietari",
+      description: "Fent clic al botó 'Editar dades' (amb icona de llapis) a la fitxa de la figura, el propietari pot modificar cada element mitjançant un formulari modal complet: preu de compra, valor estimat, divisa, data de compra, quantitat, ubicació física a l'expositor, notes i condició.",
+      status: 'ready',
+      tags: ['Edició', 'Formulari', 'Col·leccionista', 'Persistència']
+    },
+    {
+      title: "Afegir Múltiples Fotos Pròpies a la Figura",
+      description: "El propietari pot afegir tantes fotos noves com vulgui des del botó '+ Foto' de la tira de miniatures, des del botó 'Afegir fotos' del panell o mitjançant enllaç URL. Les fotos es comprimeixen automàticament i es desen tant al servidor com a la memòria local.",
+      status: 'ready',
+      tags: ['Múltiples Fotos', 'Càmera', 'Galeria', 'Pujar Imatges']
+    },
+    {
+      title: "Canviar la Foto de Portada i Gestionar Galeria",
+      description: "Selecciona qualsevol de les fotos de la galeria i prem 'Definir com a foto de portada' per convertir-la en la imatge principal del teu cardback. També pots eliminar fotos secundàries que hagis afegit prèviament.",
+      status: 'ready',
+      tags: ['Portada', 'Galeria', 'Personalització']
+    },
+    {
+      title: "Visor de Càmera en Directe d'estil Google Lens (IA)",
+      description: "Obre 'Google Lens (IA)' des del menú lateral, el tauler o la barra mòbil. Fes clic a 'Obrir Càmera en Directe' per veure el vídeo a temps real amb retícula d'enfocament i làser animat. Pots girar la càmera i prémer l'obturador per capturar i identificar.",
+      status: 'ready',
+      tags: ['Google Lens', 'Càmera Directa', 'Visor en Temps Real', 'Mòbil']
+    },
+    {
+      title: "Botó 'Neteja' per reiniciar sessions sense canviar de pàgina",
+      description: "A la pantalla de Google Lens, el botó 'Neteja' atura la càmera, esborra la foto i els resultats i buida el selector de fitxers per començar una sessió neta a l'instant.",
+      status: 'ready',
+      tags: ['Neteja', 'Reset', 'UX', 'Sessió']
     }
   ],
   changelog: [
     {
-      version: 'v2.5.1',
-      date: '2026-10-03',
-      title: 'Optimització d\'UI, canvi de tema a perfil i visibilitat de versió',
+      version: 'v2.7.0',
+      date: '2026-10-23',
+      title: "Navegació a detall post-afegit, panell d'inventari de propietari, edició completa i càrrega de fotos",
       highlights: [
-        'Eliminat l\'escàner redundant del Header (ja disponible al menú lateral i en afegir figura).',
-        'Traslladat el canvi de tema (Clar / Fosc) a la pantalla de Perfil & Ajustos amb controls visuals dedicats.',
-        'Eliminat el desbordament i scroll horitzontal del Header: la icona d\'usuari i el logout són 100% accessibles.',
-        'Indicador de versió desplegada v2.5.1 visible a tots els dispositius (mòbil i escriptori) amb informació de proves.'
+        "Un cop afegida qualsevol figura a la col·lecció, l'app navega de manera fluida directament a la seva pàgina de detall (/detail/figure/:id).",
+        "Detecció automàtica de propietat de la figura a FigureDetail amb sincronització reactiva a temps real via CollectionService.subscribe.",
+        "Nou panell de propietari d'estil cardback que desglossa preu de compra, valor estimat, càlcul de revalorització, estat, ubicació i comentaris personals.",
+        "Formulari complet d'edició disponible directament des de la fitxa per ajustar tots els paràmetres de la figura.",
+        "Gestió avançada de múltiples fotos: càrrega directa des de fitxers/càmera amb compressió, afegir per URL, selector de foto de portada i eliminació de fotos pròpies."
       ]
     },
     {
-      version: 'v2.5.0',
-      date: '2026-10-03',
-      title: 'Correccions de persistència, portada i estabilitat d\'IA',
+      version: 'v2.6.0',
+      date: '2026-10-22',
+      title: "Restauració completa de càmera Google Lens, botó 'Neteja' i models de visió Gemini",
       highlights: [
-        'Restaurada i millorada l\'opció per escollir la foto de portada a la creació manual de figures amb botons sempre visibles.',
-        'Garantida la persistència de les figures noves al catàleg comunitari i a la col·lecció personal.',
-        'Hash criptogràfic d\'imatges complet per evitar col·lisions en memòria cau de reconeixement visual.',
-        'Afegit control de versions i llista de funcionalitats testejarles.'
-      ]
-    },
-    {
-      version: 'v2.4.0',
-      date: '2026-10-02',
-      title: 'Desxifrador Kenner i millores de càmera',
-      highlights: [
-        'Integrat l\'assortiment Kenner POTF2 #69570 i el desxifrador universal de referències.',
-        'Detecció d\'entorn (escriptori vs mòbil) amb timeout de 5 segons per evitar l\'espera infinita a webcams de PC.',
-        'Eliminats falsos positius de personatges a partir de les galeries de cardbacks.'
+        "Restablert el visor de càmera interactiu en directe amb streaming WebRTC/getUserMedia, cantoneres fluorescents i animació de làser d'escaneig.",
+        "Afegit i habilitat el botó 'Neteja' a la capçalera, panell d'accions i fitxa de resultats per reiniciar la sessió d'identificació sense haver de canviar de pàgina.",
+        "Corregida la configuració de models de visió Gemini al backend per a una identificació instantània i ultra fiable."
       ]
     }
   ]

@@ -168,7 +168,10 @@ async function syncWithNeon() {
       headers: { Authorization: `Bearer ${localStorage.getItem('cb_token') || ''}` }
     });
     if (res.ok) {
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) return;
+      const data = await res.json().catch(() => null);
+      if (!data) return;
       if (data.quotaExceeded) {
         dbConnected = false;
         console.warn('[Neon] Quota limit reached (5GB). Operating in offline local storage mode.');
